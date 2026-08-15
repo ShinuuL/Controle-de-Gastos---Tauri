@@ -42,6 +42,21 @@ export interface CreateExpenseInput {
   date: string;
 }
 
+export type MovementNature = "entrada" | "saida";
+export type MovementStatus = "previsto" | "realizado";
+
+export interface Transaction {
+  id: string;
+  category_id: string;
+  description: string;
+  amount_cents: number;
+  date: string;
+  nature: MovementNature;
+  status: MovementStatus;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CategoryTotal {
   category_id: string;
   category_name: string;

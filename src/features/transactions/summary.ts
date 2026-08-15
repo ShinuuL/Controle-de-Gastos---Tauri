@@ -1,6 +1,8 @@
+import type { MovementNature, MovementStatus } from "../../lib/types";
+
 type Movement = {
-  nature: "entrada" | "saida";
-  status: "previsto" | "realizado";
+  nature: MovementNature;
+  status: MovementStatus;
   amount_cents: number;
 };
 
