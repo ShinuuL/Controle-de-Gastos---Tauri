@@ -8,7 +8,10 @@ export interface ChartSlice {
 
 export const OTHERS_COLOR = "#94A3B8";
 
-export function buildChartSlices(totals: CategoryTotal[], maxSlices = 6): ChartSlice[] {
+export function buildChartSlices(
+  totals: CategoryTotal[],
+  maxSlices = 6,
+): ChartSlice[] {
   if (totals.length === 0) return [];
   if (totals.length <= maxSlices) {
     return totals.map((t) => ({

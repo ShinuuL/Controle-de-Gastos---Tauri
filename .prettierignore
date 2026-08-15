@@ -1,0 +1,8 @@
+.opencode/
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/**/*.rs
+src-tauri/Cargo.toml
+src-tauri/Cargo.lock

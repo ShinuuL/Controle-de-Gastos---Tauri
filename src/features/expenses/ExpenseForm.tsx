@@ -29,9 +29,13 @@ export default function ExpenseForm({
   onSubmit,
   onCancel,
 }: ExpenseFormProps) {
-  const [amount, setAmount] = useState(initial ? formatCentsInput(initial.amount_cents) : "");
+  const [amount, setAmount] = useState(
+    initial ? formatCentsInput(initial.amount_cents) : "",
+  );
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [categoryId, setCategoryId] = useState(initial?.category_id ?? categories[0]?.id ?? "");
+  const [categoryId, setCategoryId] = useState(
+    initial?.category_id ?? categories[0]?.id ?? "",
+  );
   const [date, setDate] = useState(initial?.date ?? todayISO());
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -69,7 +73,10 @@ export default function ExpenseForm({
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-4">
       <div>
-        <label htmlFor="expense-amount" className="mb-1 block text-sm font-medium">
+        <label
+          htmlFor="expense-amount"
+          className="mb-1 block text-sm font-medium"
+        >
           Valor
         </label>
         <input
@@ -86,7 +93,10 @@ export default function ExpenseForm({
       </div>
 
       <div>
-        <label htmlFor="expense-description" className="mb-1 block text-sm font-medium">
+        <label
+          htmlFor="expense-description"
+          className="mb-1 block text-sm font-medium"
+        >
           Descrição
         </label>
         <input
@@ -100,7 +110,10 @@ export default function ExpenseForm({
       </div>
 
       <div>
-        <label htmlFor="expense-category" className="mb-1 block text-sm font-medium">
+        <label
+          htmlFor="expense-category"
+          className="mb-1 block text-sm font-medium"
+        >
           Categoria
         </label>
         <select
@@ -118,7 +131,10 @@ export default function ExpenseForm({
       </div>
 
       <div>
-        <label htmlFor="expense-date" className="mb-1 block text-sm font-medium">
+        <label
+          htmlFor="expense-date"
+          className="mb-1 block text-sm font-medium"
+        >
           Data
         </label>
         <input

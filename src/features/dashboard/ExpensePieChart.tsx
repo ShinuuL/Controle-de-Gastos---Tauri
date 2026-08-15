@@ -18,7 +18,14 @@ function percentLabel(props: {
   outerRadius?: number;
   percent?: number;
 }) {
-  const { cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, percent } = props;
+  const {
+    cx = 0,
+    cy = 0,
+    midAngle = 0,
+    innerRadius = 0,
+    outerRadius = 0,
+    percent,
+  } = props;
   if (!percent || percent < 0.05) return null;
   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
@@ -41,7 +48,10 @@ function percentLabel(props: {
   );
 }
 
-export default function ExpensePieChart({ slices, totalCents }: ExpensePieChartProps) {
+export default function ExpensePieChart({
+  slices,
+  totalCents,
+}: ExpensePieChartProps) {
   if (slices.length === 0 || totalCents === 0) {
     return (
       <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
@@ -51,7 +61,10 @@ export default function ExpensePieChart({ slices, totalCents }: ExpensePieChartP
   }
 
   const summary = slices
-    .map((slice) => `${slice.name} ${((slice.value / totalCents) * 100).toFixed(1)}%`)
+    .map(
+      (slice) =>
+        `${slice.name} ${((slice.value / totalCents) * 100).toFixed(1)}%`,
+    )
     .join(", ");
 
   const tooltipStyle: React.CSSProperties = {
@@ -64,7 +77,11 @@ export default function ExpensePieChart({ slices, totalCents }: ExpensePieChartP
   };
 
   return (
-    <div className="relative h-64" role="img" aria-label={`Distribuição de gastos: ${summary}`}>
+    <div
+      className="relative h-64"
+      role="img"
+      aria-label={`Distribuição de gastos: ${summary}`}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie

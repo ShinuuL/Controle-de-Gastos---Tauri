@@ -18,7 +18,8 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self' tauri: asset:; connect-src 'self' ipc: http://ipc.localhost; img-src 'self' asset: tauri: data:; style-src 'self' 'unsafe-inline'; font-src 'self' asset: tauri: data:; script-src 'self'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'",
+      "devCsp": "default-src 'self' tauri: asset: http://localhost:1420; connect-src 'self' ipc: http://ipc.localhost http://localhost:1420 ws://localhost:1420 ws://localhost:1421; img-src 'self' asset: tauri: data: http://localhost:1420; style-src 'self' 'unsafe-inline' http://localhost:1420; font-src 'self' asset: tauri: data: http://localhost:1420; script-src 'self' http://localhost:1420; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'"
     }
   },
   "bundle": {

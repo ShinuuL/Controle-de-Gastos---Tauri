@@ -50,7 +50,10 @@ export default function Modal({ open, onClose, title, children }: ModalProps) {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 id="modal-title" className="text-lg font-semibold tracking-tight">
+              <h2
+                id="modal-title"
+                className="text-lg font-semibold tracking-tight"
+              >
                 {title}
               </h2>
               <button

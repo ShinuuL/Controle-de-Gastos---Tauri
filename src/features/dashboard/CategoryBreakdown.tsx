@@ -36,9 +36,14 @@ export default function CategoryBreakdown({ totals }: CategoryBreakdownProps) {
               />
               {t.category_name}
             </td>
-            <td className="py-2 pr-3 text-right tabular-nums">{formatBRL(t.total_cents)}</td>
+            <td className="py-2 pr-3 text-right tabular-nums">
+              {formatBRL(t.total_cents)}
+            </td>
             <td className="py-2 text-right tabular-nums text-muted-foreground">
-              {grandTotal > 0 ? ((t.total_cents / grandTotal) * 100).toFixed(1) : "0.0"}%
+              {grandTotal > 0
+                ? ((t.total_cents / grandTotal) * 100).toFixed(1)
+                : "0.0"}
+              %
             </td>
           </tr>
         ))}

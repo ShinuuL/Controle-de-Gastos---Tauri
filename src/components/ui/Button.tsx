@@ -14,7 +14,13 @@ export default function Button({
   const variants = {
     primary: "bg-primary text-primary-foreground hover:bg-primary/90",
     ghost: "text-muted-foreground hover:bg-surface hover:text-foreground",
-    danger: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+    danger:
+      "bg-destructive text-destructive-foreground hover:bg-destructive/90",
   };
-  return <button className={`${base} ${variants[variant]} ${className}`} {...props} />;
+  return (
+    <button
+      className={`${base} ${variants[variant]} ${className}`}
+      {...props}
+    />
+  );
 }
