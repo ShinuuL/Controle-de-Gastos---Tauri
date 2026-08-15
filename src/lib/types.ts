@@ -9,10 +9,15 @@ export interface Category {
   created_at: string;
 }
 
+export interface CategoryBudgetProgress extends Category {
+  spent_cents: number;
+}
+
 export interface CreateCategoryInput {
   name: string;
   icon: string;
   color: string;
+  budget_monthly?: number | null;
 }
 
 export interface Expense {
