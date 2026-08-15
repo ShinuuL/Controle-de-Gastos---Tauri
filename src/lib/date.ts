@@ -12,3 +12,15 @@ export function formatMonthLabel(year: number, month: number): string {
   });
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
+
+export function formatDateBR(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+export function todayISO(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
