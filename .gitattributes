@@ -1,0 +1,2 @@
+# Tauri generates Android Gradle templates with whitespace that should not block commits.
+src-tauri/gen/android/** -whitespace
