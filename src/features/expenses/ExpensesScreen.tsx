@@ -16,7 +16,8 @@ import { listCategories } from "../../lib/repositories/categories";
 import { formatMonthLabel } from "../../lib/date";
 import type { Category, ExpenseWithCategory } from "../../lib/types";
 
-type FormState = { mode: "create" } | { mode: "edit"; expense: ExpenseWithCategory } | null;
+type FormState =
+  { mode: "create" } | { mode: "edit"; expense: ExpenseWithCategory } | null;
 
 const selectClass =
   "h-11 w-full max-w-56 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-2 focus:outline-ring";
@@ -31,7 +32,9 @@ export default function ExpensesScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formState, setFormState] = useState<FormState>(null);
-  const [deleteTarget, setDeleteTarget] = useState<ExpenseWithCategory | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ExpenseWithCategory | null>(
+    null,
+  );
 
   const load = useCallback(async (nextYear: number, nextMonth: number) => {
     setLoading(true);
@@ -40,7 +43,9 @@ export default function ExpensesScreen() {
       const rows = await listExpensesByMonth(nextYear, nextMonth);
       setExpenses(rows);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao carregar despesas.");
+      setError(
+        err instanceof Error ? err.message : "Erro ao carregar despesas.",
+      );
     } finally {
       setLoading(false);
     }
@@ -54,14 +59,19 @@ export default function ExpensesScreen() {
     listCategories()
       .then(setCategories)
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Erro ao carregar categorias.");
+        setError(
+          err instanceof Error ? err.message : "Erro ao carregar categorias.",
+        );
       });
   }, []);
 
-  const handleMonthChange = useCallback((nextYear: number, nextMonth: number) => {
-    setYear(nextYear);
-    setMonth(nextMonth);
-  }, []);
+  const handleMonthChange = useCallback(
+    (nextYear: number, nextMonth: number) => {
+      setYear(nextYear);
+      setMonth(nextMonth);
+    },
+    [],
+  );
 
   const handleSubmit = async (values: ExpenseFormValues) => {
     if (formState?.mode === "edit") {
@@ -88,7 +98,10 @@ export default function ExpensesScreen() {
   return (
     <section className="space-y-6 p-4 md:p-8" aria-labelledby="expenses-title">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="expenses-title" className="text-xl font-semibold tracking-tight">
+        <h2
+          id="expenses-title"
+          className="text-xl font-semibold tracking-tight"
+        >
           Despesas
         </h2>
         <Button onClick={() => setFormState({ mode: "create" })}>
@@ -120,7 +133,9 @@ export default function ExpensesScreen() {
         </p>
       )}
 
-      {!error && loading && <p className="text-sm text-muted-foreground">Carregando…</p>}
+      {!error && loading && (
+        <p className="text-sm text-muted-foreground">Carregando…</p>
+      )}
 
       {!error && !loading && filtered.length === 0 && (
         <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">

@@ -22,7 +22,14 @@ export async function seedPresetCategories(db: Database): Promise<void> {
   for (const [index, category] of PRESET_CATEGORIES.entries()) {
     await db.execute(
       "INSERT INTO categories (id, name, icon, color, is_preset, sort_order, created_at) VALUES ($1, $2, $3, $4, 1, $5, $6)",
-      [crypto.randomUUID(), category.name, category.icon, category.color, index, now],
+      [
+        crypto.randomUUID(),
+        category.name,
+        category.icon,
+        category.color,
+        index,
+        now,
+      ],
     );
   }
 }

@@ -14,7 +14,12 @@ export default function BottomNav({ active, onSelect }: BottomNavProps) {
     >
       <div className="grid grid-cols-3">
         {TAB_DEFS.map((tab) => (
-          <BottomNavItem key={tab.id} tab={tab} active={active === tab.id} onSelect={onSelect} />
+          <BottomNavItem
+            key={tab.id}
+            tab={tab}
+            active={active === tab.id}
+            onSelect={onSelect}
+          />
         ))}
       </div>
     </nav>

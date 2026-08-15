@@ -60,7 +60,8 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-ring: var(--ring);
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-sans:
+    "Inter Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;

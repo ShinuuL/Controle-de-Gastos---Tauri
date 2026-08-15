@@ -12,7 +12,10 @@ export function formatCentsInput(cents: number): string {
 }
 
 export function parseToCents(raw: string): number | null {
-  const cleaned = raw.trim().replace(/^r\$\s?/i, "").replace(/\s/g, "");
+  const cleaned = raw
+    .trim()
+    .replace(/^r\$\s?/i, "")
+    .replace(/\s/g, "");
   if (!cleaned) return null;
 
   const hasComma = cleaned.includes(",");
@@ -22,7 +25,10 @@ export function parseToCents(raw: string): number | null {
   let decimalPart = "";
 
   if (hasComma || hasDot) {
-    const lastSep = Math.max(cleaned.lastIndexOf(","), cleaned.lastIndexOf("."));
+    const lastSep = Math.max(
+      cleaned.lastIndexOf(","),
+      cleaned.lastIndexOf("."),
+    );
     const sepChar = cleaned[lastSep];
     integerPart = cleaned.slice(0, lastSep);
     decimalPart = cleaned.slice(lastSep + 1);
@@ -31,6 +37,8 @@ export function parseToCents(raw: string): number | null {
   }
 
   const digits = (str: string) => str.replace(/[^\d]/g, "");
-  const cents = Number(digits(integerPart)) * 100 + Number(digits(decimalPart).slice(0, 2).padEnd(2, "0"));
+  const cents =
+    Number(digits(integerPart)) * 100 +
+    Number(digits(decimalPart).slice(0, 2).padEnd(2, "0"));
   return Number.isFinite(cents) ? cents : null;
 }

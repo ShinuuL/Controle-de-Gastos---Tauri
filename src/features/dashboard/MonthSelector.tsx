@@ -7,7 +7,11 @@ interface MonthSelectorProps {
   onChange: (year: number, month: number) => void;
 }
 
-export default function MonthSelector({ year, month, onChange }: MonthSelectorProps) {
+export default function MonthSelector({
+  year,
+  month,
+  onChange,
+}: MonthSelectorProps) {
   const shift = (delta: number) => {
     const date = new Date(year, month - 1 + delta, 1);
     onChange(date.getFullYear(), date.getMonth() + 1);
