@@ -52,7 +52,12 @@ open class BuildTask : DefaultTask() {
 
         project.exec {
             workingDir(File(project.projectDir, rootDirRel))
-            executable(executable)
+            if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+                executable("cmd.exe")
+                args("/d", "/c", executable)
+            } else {
+                executable(executable)
+            }
             args(args)
             if (project.logger.isEnabled(LogLevel.DEBUG)) {
                 args("-vv")
