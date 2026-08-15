@@ -9,7 +9,11 @@ interface ExpenseListProps {
   onDelete: (expense: ExpenseWithCategory) => void;
 }
 
-export default function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListProps) {
+export default function ExpenseList({
+  expenses,
+  onEdit,
+  onDelete,
+}: ExpenseListProps) {
   return (
     <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
       {expenses.map((expense) => (
@@ -22,7 +26,9 @@ export default function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListP
           </time>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">
-              {expense.description || <span className="font-normal text-muted-foreground">—</span>}
+              {expense.description || (
+                <span className="font-normal text-muted-foreground">—</span>
+              )}
             </p>
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span
