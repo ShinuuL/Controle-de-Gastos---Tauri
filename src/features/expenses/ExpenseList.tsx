@@ -13,10 +13,10 @@ export default function ExpenseList({ expenses, onEdit, onDelete }: ExpenseListP
   return (
     <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
       {expenses.map((expense) => (
-        <li key={expense.id} className="flex items-center gap-3 p-3">
+        <li key={expense.id} className="flex items-center gap-4 p-3">
           <time
             dateTime={expense.date}
-            className="w-14 shrink-0 text-xs tabular-nums text-muted-foreground"
+            className="w-20 shrink-0 text-xs tabular-nums text-muted-foreground"
           >
             {formatDateBR(expense.date)}
           </time>
