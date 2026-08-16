@@ -57,6 +57,15 @@ export interface Transaction {
   updated_at: string;
 }
 
+export interface CreateTransactionInput {
+  category_id: string;
+  description: string;
+  amount_cents: number;
+  date: string;
+  nature: MovementNature;
+  status: MovementStatus;
+}
+
 export interface CategoryTotal {
   category_id: string;
   category_name: string;
