@@ -6,7 +6,7 @@ vi.mock("../db", () => dbMock);
 
 const { getDb } = dbMock;
 
-import { createExpense, updateExpense } from "./expenses";
+import { createExpense, listExpensesByMonth, updateExpense } from "./expenses";
 
 interface StoredExpense {
   id: string;
@@ -185,6 +185,16 @@ describe("expense repository", () => {
     expect(fake.expenses).toContainEqual(
       expect.objectContaining({ description: "" }),
     );
+  });
+
+  it("lists only realized outflows for the legacy expense screen", async () => {
+    const select = vi.fn().mockResolvedValue([]);
+    getDb.mockResolvedValue({ select });
+
+    await listExpensesByMonth(2026, 1);
+
+    expect(select.mock.calls[0]?.[0]).toContain("e.nature = 'saida'");
+    expect(select.mock.calls[0]?.[0]).toContain("e.status = 'realizado'");
   });
 
   it("validates only supplied update fields", async () => {

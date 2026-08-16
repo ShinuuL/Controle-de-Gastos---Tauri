@@ -67,8 +67,9 @@ export async function listExpensesByMonth(
       `SELECT e.*, c.name AS category_name, c.color AS category_color
      FROM expenses e
      JOIN categories c ON c.id = e.category_id
-     WHERE e.date >= $1 AND e.date < $2
-     ORDER BY e.date DESC, e.created_at DESC`,
+      WHERE e.date >= $1 AND e.date < $2 AND e.nature = 'saida' AND e.status = 'realizado'
+      WHERE e.nature = 'saida' AND e.status = 'realizado'
+      ORDER BY e.date DESC, e.created_at DESC`,
       [start, end],
     );
   });
@@ -166,7 +167,7 @@ export async function monthlyTotal(
     const db = await getDb();
     const { start, end } = monthRange(year, month);
     const rows = await db.select<{ total: number | null }[]>(
-      "SELECT SUM(amount_cents) AS total FROM expenses WHERE date >= $1 AND date < $2",
+      "SELECT SUM(amount_cents) AS total FROM expenses WHERE date >= $1 AND date < $2 AND nature = 'saida' AND status = 'realizado'",
       [start, end],
     );
     return rows[0]?.total ?? 0;
@@ -187,7 +188,7 @@ export async function monthlyTotalsByCategory(
             SUM(e.amount_cents) AS total_cents
      FROM expenses e
      JOIN categories c ON c.id = e.category_id
-     WHERE e.date >= $1 AND e.date < $2
+      WHERE e.date >= $1 AND e.date < $2 AND e.nature = 'saida' AND e.status = 'realizado'
      GROUP BY e.category_id, c.name, c.color
      ORDER BY total_cents DESC`,
       [start, end],
