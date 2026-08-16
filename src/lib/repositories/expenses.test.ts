@@ -6,7 +6,12 @@ vi.mock("../db", () => dbMock);
 
 const { getDb } = dbMock;
 
-import { createExpense, listExpensesByMonth, updateExpense } from "./expenses";
+import {
+  createExpense,
+  listAllExpenses,
+  listExpensesByMonth,
+  updateExpense,
+} from "./expenses";
 
 interface StoredExpense {
   id: string;
@@ -192,9 +197,12 @@ describe("expense repository", () => {
     getDb.mockResolvedValue({ select });
 
     await listExpensesByMonth(2026, 1);
+    await listAllExpenses();
 
     expect(select.mock.calls[0]?.[0]).toContain("e.nature = 'saida'");
     expect(select.mock.calls[0]?.[0]).toContain("e.status = 'realizado'");
+    expect(select.mock.calls[0]?.[0].match(/\bWHERE\b/g)).toHaveLength(1);
+    expect(select.mock.calls[1]?.[0]).toContain("e.nature = 'saida'");
   });
 
   it("validates only supplied update fields", async () => {

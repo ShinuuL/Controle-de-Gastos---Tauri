@@ -67,8 +67,7 @@ export async function listExpensesByMonth(
       `SELECT e.*, c.name AS category_name, c.color AS category_color
      FROM expenses e
      JOIN categories c ON c.id = e.category_id
-      WHERE e.date >= $1 AND e.date < $2 AND e.nature = 'saida' AND e.status = 'realizado'
-      WHERE e.nature = 'saida' AND e.status = 'realizado'
+     WHERE e.date >= $1 AND e.date < $2 AND e.nature = 'saida' AND e.status = 'realizado'
       ORDER BY e.date DESC, e.created_at DESC`,
       [start, end],
     );
@@ -82,6 +81,7 @@ export async function listAllExpenses(): Promise<ExpenseWithCategory[]> {
       `SELECT e.*, c.name AS category_name, c.color AS category_color
      FROM expenses e
      JOIN categories c ON c.id = e.category_id
+     WHERE e.nature = 'saida' AND e.status = 'realizado'
      ORDER BY e.date DESC, e.created_at DESC`,
     );
   });
