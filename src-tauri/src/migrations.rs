@@ -13,6 +13,7 @@ pub fn migrations() -> Vec<Migration> {
                 color          TEXT NOT NULL,
                 is_preset      INTEGER NOT NULL DEFAULT 0,
                 budget_monthly INTEGER,
+                nature         TEXT NOT NULL DEFAULT 'saida' CHECK (nature IN ('entrada', 'saida')),
                 sort_order     INTEGER NOT NULL DEFAULT 0,
                 created_at     TEXT NOT NULL
             );
@@ -23,6 +24,8 @@ pub fn migrations() -> Vec<Migration> {
                 description  TEXT NOT NULL DEFAULT '',
                 amount_cents INTEGER NOT NULL CHECK (typeof(amount_cents) = 'integer' AND amount_cents > 0),
                 date         TEXT NOT NULL,
+                nature       TEXT NOT NULL DEFAULT 'saida' CHECK (nature IN ('entrada', 'saida')),
+                status      TEXT NOT NULL DEFAULT 'realizado' CHECK (status IN ('previsto', 'realizado')),
                 created_at   TEXT NOT NULL,
                 updated_at   TEXT NOT NULL
             );
@@ -90,6 +93,15 @@ mod tests {
             .contains("CHECK (typeof(amount_cents) = 'integer' AND amount_cents > 0)"));
         assert!(initial.sql.contains("idx_expenses_date"));
         assert!(initial.sql.contains("idx_expenses_category_id"));
+        assert!(initial.sql.contains(
+            "nature         TEXT NOT NULL DEFAULT 'saida' CHECK (nature IN ('entrada', 'saida'))",
+        ));
+        assert!(initial.sql.contains(
+            "nature       TEXT NOT NULL DEFAULT 'saida' CHECK (nature IN ('entrada', 'saida'))",
+        ));
+        assert!(initial.sql.contains(
+            "status      TEXT NOT NULL DEFAULT 'realizado' CHECK (status IN ('previsto', 'realizado'))",
+        ));
 
         let hardening = migrations
             .iter()
