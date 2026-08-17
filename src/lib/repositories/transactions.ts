@@ -2,6 +2,7 @@ import { getDb } from "../db";
 import { monthRange } from "../date";
 import { traceOperation } from "../observability/telemetry";
 import type {
+  CategoryTotal,
   CreateTransactionInput,
   Transaction,
   TransactionWithCategory,
@@ -123,5 +124,37 @@ export async function deleteTransaction(id: string): Promise<void> {
     if (result.rowsAffected !== 1) {
       throw new Error("Transação não encontrada.");
     }
+  });
+}
+
+export async function monthlyTotal(year: number, month: number): Promise<number> {
+  return traceOperation("transaction.monthlyTotal", async () => {
+    const db = await getDb();
+    const { start, end } = monthRange(year, month);
+    const rows = await db.select<{ total: number | null }[]>(
+      `SELECT SUM(CASE WHEN nature = 'entrada' THEN amount_cents ELSE -amount_cents END) AS total
+       FROM expenses WHERE date >= $1 AND date < $2`,
+      [start, end],
+    );
+    return rows[0]?.total ?? 0;
+  });
+}
+
+export async function monthlyTotalsByCategory(
+  year: number,
+  month: number,
+): Promise<CategoryTotal[]> {
+  return traceOperation("transaction.monthlyTotalsByCategory", async () => {
+    const db = await getDb();
+    const { start, end } = monthRange(year, month);
+    return db.select<CategoryTotal[]>(
+      `SELECT e.category_id, c.name AS category_name, c.color AS category_color,
+              SUM(CASE WHEN e.nature = 'entrada' THEN e.amount_cents ELSE -e.amount_cents END) AS total_cents
+       FROM expenses e
+       JOIN categories c ON c.id = e.category_id
+       WHERE e.date >= $1 AND e.date < $2
+       GROUP BY e.category_id, c.name, c.color`,
+      [start, end],
+    );
   });
 }

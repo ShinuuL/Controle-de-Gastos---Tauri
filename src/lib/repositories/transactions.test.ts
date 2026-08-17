@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
+  CategoryTotal,
   CreateTransactionInput,
   MovementNature,
   MovementStatus,
@@ -15,6 +16,8 @@ import {
   createTransaction,
   deleteTransaction,
   listTransactionsByMonth,
+  monthlyTotal,
+  monthlyTotalsByCategory,
   updateTransaction,
 } from "./transactions";
 
@@ -74,10 +77,12 @@ function createFakeDb(options?: {
   categoryIds?: string[];
   transactions?: StoredTransaction[];
   transactionRows?: TransactionWithCategoryRow[];
+  monthlyTotalResult?: Array<{ total: number | null }>;
 }) {
   const transactions = [...(options?.transactions ?? [])];
   const transactionRows = options?.transactionRows ?? [];
   const categoryIds = options?.categoryIds ?? [];
+  const monthlyTotalResult = options?.monthlyTotalResult ?? [];
   const selectCalls: Array<{ query: string; values?: unknown[] }> = [];
   const executeCalls: Array<{ query: string; values?: unknown[] }> = [];
 
@@ -90,6 +95,7 @@ function createFakeDb(options?: {
           .map((id) => ({ id })) as T;
       }
       if (query.includes("JOIN categories")) return transactionRows as T;
+      if (query.includes("SUM(CASE")) return monthlyTotalResult as T;
       throw new Error("Unexpected select query");
     },
     async execute(query: string, values?: unknown[]) {
@@ -497,6 +503,100 @@ describe("transaction repository", () => {
       await expect(deleteTransaction("missing")).rejects.toThrow(
         "Transação não encontrada.",
       );
+    });
+  });
+
+  describe("monthlyTotal", () => {
+    it("uses a signed CASE WHEN to sum entradas positively and saidas negatively", async () => {
+      const fake = createFakeDb({ monthlyTotalResult: [{ total: 5000 }] });
+      getDb.mockResolvedValue(fake.db);
+
+      const result = await monthlyTotal(2026, 1);
+
+      expect(result).toBe(5000);
+      const query = fake.selectCalls[0]?.query ?? "";
+      expect(query).toContain(
+        "CASE WHEN nature = 'entrada' THEN amount_cents ELSE -amount_cents END",
+      );
+      expect(query).not.toContain("nature = 'saida'");
+      expect(fake.selectCalls[0]?.values).toEqual([
+        "2026-01-01",
+        "2026-02-01",
+      ]);
+    });
+
+    it("returns 0 when there are no rows", async () => {
+      const fake = createFakeDb({ monthlyTotalResult: [] });
+      getDb.mockResolvedValue(fake.db);
+
+      const result = await monthlyTotal(2026, 3);
+
+      expect(result).toBe(0);
+      expect(fake.selectCalls[0]?.values).toEqual([
+        "2026-03-01",
+        "2026-04-01",
+      ]);
+    });
+
+    it("returns 0 when the total is null", async () => {
+      const fake = createFakeDb({ monthlyTotalResult: [{ total: null }] });
+      getDb.mockResolvedValue(fake.db);
+
+      const result = await monthlyTotal(2026, 1);
+
+      expect(result).toBe(0);
+    });
+  });
+
+  describe("monthlyTotalsByCategory", () => {
+    it("uses a signed CASE WHEN, joins categories, and groups by category", async () => {
+      const categoryTotals: CategoryTotal[] = [
+        {
+          category_id: "food",
+          category_name: "Alimentação",
+          category_color: "#123456",
+          total_cents: 3000,
+        },
+        {
+          category_id: "transport",
+          category_name: "Transporte",
+          category_color: "#654321",
+          total_cents: -500,
+        },
+      ];
+      const fake = createFakeDb({
+        transactionRows:
+          categoryTotals as unknown as TransactionWithCategoryRow[],
+      });
+      getDb.mockResolvedValue(fake.db);
+
+      const result = await monthlyTotalsByCategory(2026, 1);
+
+      expect(result).toEqual(categoryTotals);
+      const query = fake.selectCalls[0]?.query ?? "";
+      expect(query).toContain(
+        "CASE WHEN e.nature = 'entrada' THEN e.amount_cents ELSE -e.amount_cents END",
+      );
+      expect(query).not.toContain("nature = 'saida'");
+      expect(query).toContain("GROUP BY");
+      expect(fake.selectCalls[0]?.values).toEqual([
+        "2026-01-01",
+        "2026-02-01",
+      ]);
+    });
+
+    it("returns an empty array when no categories have transactions", async () => {
+      const fake = createFakeDb({ transactionRows: [] });
+      getDb.mockResolvedValue(fake.db);
+
+      const result = await monthlyTotalsByCategory(2026, 3);
+
+      expect(result).toEqual([]);
+      expect(fake.selectCalls[0]?.query).toContain("GROUP BY");
+      expect(fake.selectCalls[0]?.values).toEqual([
+        "2026-03-01",
+        "2026-04-01",
+      ]);
     });
   });
 });

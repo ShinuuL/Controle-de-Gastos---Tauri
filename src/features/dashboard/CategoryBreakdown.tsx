@@ -1,5 +1,5 @@
 import type { CategoryTotal } from "../../lib/types";
-import { formatBRL } from "../../lib/currency";
+import { formatSignedBRL } from "../../lib/currency";
 
 interface CategoryBreakdownProps {
   totals: CategoryTotal[];
@@ -8,7 +8,10 @@ interface CategoryBreakdownProps {
 export default function CategoryBreakdown({ totals }: CategoryBreakdownProps) {
   if (totals.length === 0) return null;
 
-  const grandTotal = totals.reduce((acc, t) => acc + t.total_cents, 0);
+  const grandTotalAbs = totals.reduce(
+    (acc, t) => acc + Math.abs(t.total_cents),
+    0,
+  );
 
   return (
     <table className="w-full text-sm">
@@ -37,11 +40,11 @@ export default function CategoryBreakdown({ totals }: CategoryBreakdownProps) {
               {t.category_name}
             </td>
             <td className="py-2 pr-3 text-right tabular-nums">
-              {formatBRL(t.total_cents)}
+              {formatSignedBRL(t.total_cents)}
             </td>
             <td className="py-2 text-right tabular-nums text-muted-foreground">
-              {grandTotal > 0
-                ? ((t.total_cents / grandTotal) * 100).toFixed(1)
+              {grandTotalAbs > 0
+                ? ((Math.abs(t.total_cents) / grandTotalAbs) * 100).toFixed(1)
                 : "0.0"}
               %
             </td>

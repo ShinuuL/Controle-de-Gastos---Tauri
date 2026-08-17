@@ -20,28 +20,6 @@ export interface CreateCategoryInput {
   budget_monthly?: number | null;
 }
 
-export interface Expense {
-  id: string;
-  category_id: string;
-  description: string;
-  amount_cents: number;
-  date: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ExpenseWithCategory extends Expense {
-  category_name: string;
-  category_color: string;
-}
-
-export interface CreateExpenseInput {
-  category_id: string;
-  description: string;
-  amount_cents: number;
-  date: string;
-}
-
 export type MovementNature = "entrada" | "saida";
 export type MovementStatus = "previsto" | "realizado";
 

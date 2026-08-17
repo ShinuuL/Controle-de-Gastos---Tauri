@@ -12,7 +12,7 @@ export default function BottomNav({ active, onSelect }: BottomNavProps) {
       aria-label="Navegação principal"
       className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
-      <div className="grid grid-cols-4">
+      <div className="grid grid-cols-3">
         {TAB_DEFS.map((tab) => (
           <BottomNavItem
             key={tab.id}
