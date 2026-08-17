@@ -21,6 +21,10 @@ const METRIC_OPERATIONS = new Set([
   "expense.delete",
   "expense.monthlyTotal",
   "expense.monthlyTotalsByCategory",
+  "transaction.listMonth",
+  "transaction.create",
+  "transaction.update",
+  "transaction.delete",
 ]);
 
 type Metric = { count: number; durationMs: number };

@@ -66,6 +66,13 @@ export interface CreateTransactionInput {
   status: MovementStatus;
 }
 
+export interface TransactionWithCategory extends Transaction {
+  category_name: string;
+  category_color: string;
+}
+
+export interface UpdateTransactionInput extends Partial<CreateTransactionInput> {}
+
 export interface CategoryTotal {
   category_id: string;
   category_name: string;
