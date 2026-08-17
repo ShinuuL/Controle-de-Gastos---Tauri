@@ -1,6 +1,6 @@
 # Roadmap — Controle de Gastos
 
-**Status geral:** Fase 8 (Transactions) concluída (2026-08-15). Próximas fases pendentes.
+**Status geral:** Fase 9 (Migração do legado) concluída (2026-08-17). Próximas fases pendentes.
 
 ---
 
@@ -16,6 +16,7 @@
 | 6 | Hardening + Observabilidade | ✅ Concluída | Endurecimento de dados locais + telemetria privada em memória (`traceOperation`, `METRIC_OPERATIONS`) | — |
 | 7 | Android | ✅ Concluída | Projeto Tauri Android + preparação de assinatura de release | — |
 | 8 | Transactions | ✅ Concluída | Modelo de transações: contratos de domínio, cálculo de resultado mensal (realizado/projeção), repositório CRUD completo (list com JOIN, create, update, delete, traceOperation), tela de Movimentações + 4ª aba | 69 testes TS + 1 Rust, critic APPROVED, vision PASS |
+| 9 | Migração do legado | ✅ Concluída | Migração de Dashboard e CategoriesScreen do repositório expenses legado para modelo de transações | 60 testes TS + 1 Rust, lint/typecheck limpos, vision pendente |
 
 > **Nota sobre numeração:** As fases 1–7 seguem a ordem cronológica dos commits (2026-08-15). "Transactions" foi internamente chamada de "Fase 5" durante o desenvolvimento, mas corresponde à 8ª entrega cronológica.
 
@@ -23,9 +24,9 @@
 
 ## Próximos passos
 
-### Fase 9 — Migração do legado (pendente)
+### Fase 9 — Migração do legado (concluída)
 
-Objetivo: migrar Dashboard e `CategoriesScreen` do repositório `expenses` legado para o modelo de transações.
+Migração de Dashboard e CategoriesScreen do repositório `expenses` legado para o modelo de transações.
 
 Itens:
 - **Dashboard:** decidir semântica — entradas entram como `nature = 'entrada'`? previstos (`status = 'previsto'`) aparecem nas projeções? A função `calculateMonthlyResult` já retorna `realized`/`projected`; integrar ao dashboard.
@@ -46,7 +47,6 @@ SQLite é local. Futura sincronização nuvem deve usar comandos Rust tipados co
 ## Notas de arquitetura
 
 - **Não há tabela `transactions` no banco.** O tipo `Transaction` lê da tabela `expenses`, que tem colunas `nature` (`'entrada'`/`'saida'`) e `status` (`'previsto'`/`'realizado'`). Essa é a arquitetura atual e não deve ser alterada sem nova migração.
-- **Dashboard legado** ainda usa repositório `expenses` diretamente. Será migrado na Fase 9 (próxima).
 - **`ExpensesScreen`** é legado: filtra `nature = 'saida' AND status = 'realizado'`. A tela de Movimentações (`TransactionsScreen`) cobre o mesmo escopo com mais funcionalidade.
 - **Banco dev antigo:** ao recriar o schema (ex.: durante migrações), o arquivo `.db` antigo deve ser apagado para que o plugin recrie com o schema atualizado incluindo `nature`/`status`.
 - **Testes de componente/UI** (opcional, não planejado): hoje a UI é verificada via typecheck + build + passada visual (vision). Não há infra de jsdom/testing-library. Considerar se a complexidade da UI justificar.
