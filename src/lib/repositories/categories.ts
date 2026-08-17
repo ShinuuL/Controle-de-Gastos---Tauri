@@ -57,7 +57,7 @@ export async function listCategoryBudgetProgress(
     const rows = await db.select<CategoryBudgetProgressRow[]>(
       `SELECT c.*, COALESCE(SUM(e.amount_cents), 0) AS spent_cents
      FROM categories c
-     LEFT JOIN expenses e ON e.category_id = c.id AND e.date >= $1 AND e.date < $2
+     LEFT JOIN expenses e ON e.category_id = c.id AND e.nature = c.nature AND e.date >= $1 AND e.date < $2
      GROUP BY c.id, c.name, c.icon, c.color, c.is_preset, c.budget_monthly, c.sort_order, c.created_at
      ORDER BY c.is_preset DESC, c.sort_order ASC, c.name ASC`,
       [start, end],

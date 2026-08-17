@@ -7,6 +7,12 @@ export function formatBRL(cents: number): string {
   return formatter.format(cents / 100);
 }
 
+/** Formata centavos com sinal explícito: entrada "+R$", saída "−R$" (U+2212), zero sem sinal. */
+export function formatSignedBRL(cents: number): string {
+  if (cents === 0) return formatBRL(0);
+  return cents > 0 ? `+${formatBRL(cents)}` : `−${formatBRL(-cents)}`;
+}
+
 export function formatCentsInput(cents: number): string {
   return (cents / 100).toFixed(2).replace(".", ",");
 }

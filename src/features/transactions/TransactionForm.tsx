@@ -2,33 +2,39 @@ import { useState, type FormEvent } from "react";
 import Button from "../../components/ui/Button";
 import { formatCentsInput, parseToCents } from "../../lib/currency";
 import { todayISO } from "../../lib/date";
-import type { Category, Expense } from "../../lib/types";
+import type {
+  Category,
+  CreateTransactionInput,
+  MovementNature,
+  MovementStatus,
+  Transaction,
+} from "../../lib/types";
 
-export interface ExpenseFormValues {
-  category_id: string;
-  description: string;
-  amount_cents: number;
-  date: string;
-}
-
-interface ExpenseFormProps {
+interface TransactionFormProps {
   categories: Category[];
-  initial?: Expense | null;
+  initial?: Transaction | null;
   submitLabel: string;
-  onSubmit: (values: ExpenseFormValues) => Promise<void> | void;
+  onSubmit: (values: CreateTransactionInput) => Promise<void> | void;
   onCancel: () => void;
 }
 
 const inputClass =
   "h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-2 focus:outline-ring";
 
-export default function ExpenseForm({
+const segmentedButtonClass = (active: boolean) =>
+  `h-9 flex-1 rounded-md text-sm font-medium transition-colors ${
+    active
+      ? "bg-primary text-primary-foreground"
+      : "text-muted-foreground hover:text-foreground"
+  }`;
+
+export default function TransactionForm({
   categories,
   initial,
   submitLabel,
   onSubmit,
   onCancel,
-}: ExpenseFormProps) {
+}: TransactionFormProps) {
   const [amount, setAmount] = useState(
     initial ? formatCentsInput(initial.amount_cents) : "",
   );
@@ -37,6 +43,12 @@ export default function ExpenseForm({
     initial?.category_id ?? categories[0]?.id ?? "",
   );
   const [date, setDate] = useState(initial?.date ?? todayISO());
+  const [nature, setNature] = useState<MovementNature>(
+    initial?.nature ?? "saida",
+  );
+  const [status, setStatus] = useState<MovementStatus>(
+    initial?.status ?? "realizado",
+  );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -64,7 +76,13 @@ export default function ExpenseForm({
         description: description.trim(),
         amount_cents: cents,
         date,
+        nature,
+        status,
       });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Erro ao salvar movimentação.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -74,13 +92,13 @@ export default function ExpenseForm({
     <form onSubmit={handleSubmit} noValidate className="space-y-4">
       <div>
         <label
-          htmlFor="expense-amount"
+          htmlFor="transaction-amount"
           className="mb-1 block text-sm font-medium"
         >
           Valor
         </label>
         <input
-          id="expense-amount"
+          id="transaction-amount"
           type="text"
           inputMode="decimal"
           autoComplete="off"
@@ -94,13 +112,13 @@ export default function ExpenseForm({
 
       <div>
         <label
-          htmlFor="expense-description"
+          htmlFor="transaction-description"
           className="mb-1 block text-sm font-medium"
         >
           Descrição
         </label>
         <input
-          id="expense-description"
+          id="transaction-description"
           type="text"
           placeholder="Ex.: Compras do mercado"
           value={description}
@@ -111,13 +129,13 @@ export default function ExpenseForm({
 
       <div>
         <label
-          htmlFor="expense-category"
+          htmlFor="transaction-category"
           className="mb-1 block text-sm font-medium"
         >
           Categoria
         </label>
         <select
-          id="expense-category"
+          id="transaction-category"
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
           className={inputClass}
@@ -132,19 +150,63 @@ export default function ExpenseForm({
 
       <div>
         <label
-          htmlFor="expense-date"
+          htmlFor="transaction-date"
           className="mb-1 block text-sm font-medium"
         >
           Data
         </label>
         <input
-          id="expense-date"
+          id="transaction-date"
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
           className={inputClass}
         />
       </div>
+
+      <fieldset>
+        <legend className="mb-2 text-sm font-medium">Natureza</legend>
+        <div className="flex rounded-lg border border-border bg-background p-1">
+          <button
+            type="button"
+            aria-pressed={nature === "entrada"}
+            onClick={() => setNature("entrada")}
+            className={segmentedButtonClass(nature === "entrada")}
+          >
+            Entrada
+          </button>
+          <button
+            type="button"
+            aria-pressed={nature === "saida"}
+            onClick={() => setNature("saida")}
+            className={segmentedButtonClass(nature === "saida")}
+          >
+            Saída
+          </button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend className="mb-2 text-sm font-medium">Status</legend>
+        <div className="flex rounded-lg border border-border bg-background p-1">
+          <button
+            type="button"
+            aria-pressed={status === "previsto"}
+            onClick={() => setStatus("previsto")}
+            className={segmentedButtonClass(status === "previsto")}
+          >
+            Prevista
+          </button>
+          <button
+            type="button"
+            aria-pressed={status === "realizado"}
+            onClick={() => setStatus("realizado")}
+            className={segmentedButtonClass(status === "realizado")}
+          >
+            Realizada
+          </button>
+        </div>
+      </fieldset>
 
       {error && (
         <p role="alert" className="text-sm text-destructive">

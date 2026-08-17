@@ -3,8 +3,8 @@ import Sidebar from "./Sidebar";
 import BottomNav from "./BottomNav";
 import type { TabId } from "./tabs";
 import DashboardScreen from "../../features/dashboard/DashboardScreen";
-import ExpensesScreen from "../../features/expenses/ExpensesScreen";
 import CategoriesScreen from "../../features/categories/CategoriesScreen";
+import TransactionsScreen from "../../features/transactions/TransactionsScreen";
 
 export default function AppShell() {
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
@@ -12,8 +12,8 @@ export default function AppShell() {
   const screen =
     activeTab === "dashboard" ? (
       <DashboardScreen />
-    ) : activeTab === "expenses" ? (
-      <ExpensesScreen />
+    ) : activeTab === "transactions" ? (
+      <TransactionsScreen />
     ) : (
       <CategoriesScreen />
     );

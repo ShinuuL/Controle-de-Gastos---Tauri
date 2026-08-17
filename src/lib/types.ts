@@ -20,27 +20,36 @@ export interface CreateCategoryInput {
   budget_monthly?: number | null;
 }
 
-export interface Expense {
+export type MovementNature = "entrada" | "saida";
+export type MovementStatus = "previsto" | "realizado";
+
+export interface Transaction {
   id: string;
   category_id: string;
   description: string;
   amount_cents: number;
   date: string;
+  nature: MovementNature;
+  status: MovementStatus;
   created_at: string;
   updated_at: string;
 }
 
-export interface ExpenseWithCategory extends Expense {
-  category_name: string;
-  category_color: string;
-}
-
-export interface CreateExpenseInput {
+export interface CreateTransactionInput {
   category_id: string;
   description: string;
   amount_cents: number;
   date: string;
+  nature: MovementNature;
+  status: MovementStatus;
 }
+
+export interface TransactionWithCategory extends Transaction {
+  category_name: string;
+  category_color: string;
+}
+
+export interface UpdateTransactionInput extends Partial<CreateTransactionInput> {}
 
 export interface CategoryTotal {
   category_id: string;

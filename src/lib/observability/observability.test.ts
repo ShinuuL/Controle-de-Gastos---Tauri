@@ -36,44 +36,44 @@ describe("observability", () => {
   it("aggregates only allowlisted operation durations", () => {
     const telemetry = createTelemetry();
 
-    telemetry.recordDuration("expense.create", 12);
-    telemetry.recordDuration("expense.create", 8);
+    telemetry.recordDuration("transaction.create", 12);
+    telemetry.recordDuration("transaction.create", 8);
     for (let index = 0; index < 101; index += 1) {
       telemetry.recordDuration(`arbitrary.operation.${index}`, index);
     }
 
     expect(telemetry.metrics()).toEqual({
-      "expense.create": { count: 2, durationMs: 20 },
+      "transaction.create": { count: 2, durationMs: 20 },
     });
   });
 
   it("caps huge and infinite durations while ignoring invalid samples", () => {
     const telemetry = createTelemetry();
 
-    telemetry.recordDuration("expense.create", Number.MAX_VALUE);
-    telemetry.recordDuration("expense.create", Number.POSITIVE_INFINITY);
-    telemetry.recordDuration("expense.create", Number.NaN);
-    telemetry.recordDuration("expense.create", -1);
-    telemetry.recordDuration("expense.create", Number.NEGATIVE_INFINITY);
+    telemetry.recordDuration("transaction.create", Number.MAX_VALUE);
+    telemetry.recordDuration("transaction.create", Number.POSITIVE_INFINITY);
+    telemetry.recordDuration("transaction.create", Number.NaN);
+    telemetry.recordDuration("transaction.create", -1);
+    telemetry.recordDuration("transaction.create", Number.NEGATIVE_INFINITY);
 
     expect(telemetry.metrics()).toEqual({
-      "expense.create": { count: 2, durationMs: MAX_DURATION_MS * 2 },
+      "transaction.create": { count: 2, durationMs: MAX_DURATION_MS * 2 },
     });
   });
 
   it("saturates metric count and aggregate duration at safe bounds", () => {
     const telemetry = createTelemetryForTesting({
-      "expense.create": {
+      "transaction.create": {
         count: MAX_METRIC_COUNT - 1,
         durationMs: MAX_METRIC_TOTAL - 1,
       },
     });
 
-    telemetry.recordDuration("expense.create", MAX_DURATION_MS);
-    telemetry.recordDuration("expense.create", MAX_DURATION_MS);
+    telemetry.recordDuration("transaction.create", MAX_DURATION_MS);
+    telemetry.recordDuration("transaction.create", MAX_DURATION_MS);
 
     expect(telemetry.metrics()).toEqual({
-      "expense.create": {
+      "transaction.create": {
         count: MAX_METRIC_COUNT,
         durationMs: MAX_METRIC_TOTAL,
       },
