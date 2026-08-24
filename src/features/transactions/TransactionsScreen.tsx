@@ -11,11 +11,15 @@ import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import MonthSelector from "../dashboard/MonthSelector";
 import ImportStatementModal from "../imports/ImportStatementModal";
-import { parseItauCsv, type CsvIssue } from "../imports/itauCsv";
 import {
-  reconcileStatement,
-  type ReconciliationResult,
-} from "../imports/reconciliation";
+  canConfirmImport,
+  readImportFileForReview,
+  transitionImportState,
+  validateImportFileSize,
+  type ImportAction,
+  type ImportState,
+} from "../imports/importController";
+import { reconcileStatement } from "../imports/reconciliation";
 import TransactionForm from "./TransactionForm";
 import TransactionList from "./TransactionList";
 import { calculateMonthlyResult } from "./summary";
@@ -44,19 +48,6 @@ type FormState =
   | { mode: "edit"; transaction: TransactionWithCategory }
   | null;
 
-interface StatementPreview {
-  fileName: string;
-  reconciliation: ReconciliationResult;
-  issues: CsvIssue[];
-}
-
-type ImportState =
-  | { kind: "idle" }
-  | { kind: "parsing"; fileName: string }
-  | { kind: "preview"; preview: StatementPreview }
-  | { kind: "confirming"; preview: StatementPreview }
-  | { kind: "error"; message: string; preview?: StatementPreview };
-
 const selectClass =
   "h-11 w-full max-w-56 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-2 focus:outline-ring";
 
@@ -82,6 +73,10 @@ export default function TransactionsScreen() {
     useState<TransactionWithCategory | null>(null);
   const [importState, setImportState] = useState<ImportState>({ kind: "idle" });
   const importInputRef = useRef<HTMLInputElement>(null);
+
+  const dispatchImport = useCallback((action: ImportAction) => {
+    setImportState((current) => transitionImportState(current, action).state);
+  }, []);
 
   const load = useCallback(async (nextYear: number, nextMonth: number) => {
     setLoading(true);
@@ -155,25 +150,20 @@ export default function TransactionsScreen() {
     event.currentTarget.value = "";
     if (!file) return;
 
-    setImportState({ kind: "parsing", fileName: file.name });
-
-    let bytes: ArrayBuffer;
-    try {
-      bytes = await file.arrayBuffer();
-    } catch {
-      setImportState({
-        kind: "error",
-        message: "Não foi possível ler o arquivo selecionado.",
-      });
+    const fileSizeError = validateImportFileSize(file.size);
+    if (fileSizeError) {
+      dispatchImport({ type: "operationFailed", message: fileSizeError });
       return;
     }
 
-    let parsed: ReturnType<typeof parseItauCsv>;
+    dispatchImport({ type: "parsingStarted", fileName: file.name });
+
+    let parsed: Awaited<ReturnType<typeof readImportFileForReview>>;
     try {
-      parsed = parseItauCsv(bytes);
+      parsed = await readImportFileForReview(file);
     } catch (err) {
-      setImportState({
-        kind: "error",
+      dispatchImport({
+        type: "operationFailed",
         message:
           err instanceof Error
             ? err.message
@@ -184,8 +174,8 @@ export default function TransactionsScreen() {
 
     try {
       const candidates = await findReconciliationCandidates(parsed.rows);
-      setImportState({
-        kind: "preview",
+      dispatchImport({
+        type: "previewReady",
         preview: {
           fileName: file.name,
           reconciliation: reconcileStatement(parsed.rows, candidates),
@@ -193,43 +183,47 @@ export default function TransactionsScreen() {
         },
       });
     } catch {
-      setImportState({
-        kind: "error",
+      dispatchImport({
+        type: "operationFailed",
         message: "Não foi possível comparar o extrato com as movimentações.",
       });
     }
   };
 
   const closeImport = useCallback(() => {
-    setImportState({ kind: "idle" });
-  }, []);
+    dispatchImport({ type: "closed" });
+  }, [dispatchImport]);
 
   const confirmImport = async (lines: ApprovedImportLine[]) => {
-    if (importState.kind !== "preview" && importState.kind !== "error") {
-      return;
-    }
-    const preview = importState.preview;
-    if (!preview) return;
+    const confirmation = transitionImportState(importState, {
+      type: "confirmationStarted",
+      canConfirm: canConfirmImport(lines),
+    });
+    if (confirmation.state.kind !== "confirming") return;
 
-    setImportState({ kind: "confirming", preview });
+    setImportState(confirmation.state);
     try {
       await confirmStatementImport(lines);
     } catch (err) {
-      setImportState({
-        kind: "error",
-        preview,
-        message:
-          err instanceof Error
-            ? err.message
-            : typeof err === "string"
-              ? err
-              : "Não foi possível importar as movimentações.",
-      });
+      setImportState(
+        transitionImportState(confirmation.state, {
+          type: "confirmationFailed",
+          message:
+            err instanceof Error
+              ? err.message
+              : typeof err === "string"
+                ? err
+                : "Não foi possível importar as movimentações.",
+        }).state,
+      );
       return;
     }
 
-    setImportState({ kind: "idle" });
-    await onImported();
+    const success = transitionImportState(confirmation.state, {
+      type: "confirmationSucceeded",
+    });
+    setImportState(success.state);
+    if (success.intent === "reloadMonthAndCategories") await onImported();
   };
 
   const importPreview =

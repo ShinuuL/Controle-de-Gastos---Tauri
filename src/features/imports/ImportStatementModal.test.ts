@@ -4,7 +4,9 @@ import type { ReconciliationResult } from "./reconciliation";
 import {
   buildApprovedImportLines,
   createInitialImportReview,
+  getInitialReviewTab,
   getImportReviewStatus,
+  syncSuggestedCategories,
 } from "./ImportStatementModal";
 
 const row = (
@@ -131,5 +133,38 @@ describe("revisão da importação de extrato", () => {
     expect(() => buildApprovedImportLines(review)).toThrow(
       "Selecione uma categoria para todas as movimentações escolhidas.",
     );
+  });
+
+  it("sincroniza sugestões quando categorias chegam sem sobrescrever escolha existente", () => {
+    const review = createInitialImportReview(
+      result({
+        newRows: [
+          row(2, { suggestedCategoryName: "Alimentação" }),
+          row(3, { suggestedCategoryName: "Moradia" }),
+        ],
+      }),
+      [],
+    ).map((item) =>
+      item.row.sourceRow === 3 ? { ...item, categoryId: "custom" } : item,
+    );
+
+    expect(
+      syncSuggestedCategories(review, [
+        { id: "food", name: "Alimentação" },
+        { id: "home", name: "Moradia" },
+      ]).map(({ categoryId }) => categoryId),
+    ).toEqual(["food", "custom"]);
+  });
+
+  it("escolhe primeiro grupo não vazio priorizando estados acionáveis", () => {
+    expect(
+      getInitialReviewTab(
+        result({ conflicts: [row(2)], duplicates: [row(3)] }),
+        [],
+      ),
+    ).toBe("conflict");
+    expect(
+      getInitialReviewTab(result({ duplicates: [row(3)] }), []),
+    ).toBe("duplicate");
   });
 });

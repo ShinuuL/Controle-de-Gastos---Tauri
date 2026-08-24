@@ -24,7 +24,7 @@ import {
 
 type ImportDecision = "import" | "ignore" | "pending";
 type ReviewGroup = "new" | "conflict";
-type ReviewTab = ReviewGroup | "duplicate" | "issue";
+export type ReviewTab = ReviewGroup | "duplicate" | "issue";
 
 export interface ImportReviewLine {
   row: ParsedStatementRow;
@@ -56,7 +56,7 @@ export interface ImportStatementModalProps {
 const tabs: ReviewTab[] = ["new", "conflict", "duplicate", "issue"];
 
 const inputClass =
-  "h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50";
+  "h-11 w-full rounded-lg border border-control-border bg-background px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:bg-surface disabled:text-muted-foreground";
 
 function normalizeCategoryName(value: string): string {
   return value
@@ -67,16 +67,22 @@ function normalizeCategoryName(value: string): string {
     .toLowerCase();
 }
 
-export function createInitialImportReview(
-  result: ReconciliationResult,
+function categoryIdsByName(
   categories: ReadonlyArray<Pick<Category, "id" | "name">>,
-): ImportReviewLine[] {
-  const categoryByName = new Map(
+): Map<string, string> {
+  return new Map(
     categories.map((category) => [
       normalizeCategoryName(category.name),
       category.id,
     ]),
   );
+}
+
+export function createInitialImportReview(
+  result: ReconciliationResult,
+  categories: ReadonlyArray<Pick<Category, "id" | "name">>,
+): ImportReviewLine[] {
+  const categoryByName = categoryIdsByName(categories);
   const reviewLine = (
     row: ParsedStatementRow,
     group: ReviewGroup,
@@ -95,6 +101,31 @@ export function createInitialImportReview(
     ...result.newRows.map((row) => reviewLine(row, "new")),
     ...result.conflicts.map((row) => reviewLine(row, "conflict")),
   ];
+}
+
+export function syncSuggestedCategories(
+  review: ImportReviewLine[],
+  categories: ReadonlyArray<Pick<Category, "id" | "name">>,
+): ImportReviewLine[] {
+  const categoryByName = categoryIdsByName(categories);
+  return review.map((item) => {
+    if (item.categoryId || !item.row.suggestedCategoryName) return item;
+    const categoryId = categoryByName.get(
+      normalizeCategoryName(item.row.suggestedCategoryName),
+    );
+    return categoryId ? { ...item, categoryId } : item;
+  });
+}
+
+export function getInitialReviewTab(
+  result: ReconciliationResult,
+  issues: CsvIssue[],
+): ReviewTab {
+  if (result.newRows.length > 0) return "new";
+  if (result.conflicts.length > 0) return "conflict";
+  if (result.duplicates.length > 0) return "duplicate";
+  if (issues.length > 0) return "issue";
+  return "new";
 }
 
 export function getImportReviewStatus(
@@ -285,16 +316,19 @@ function ReviewRow({
           </select>
         </div>
 
-        <fieldset disabled={!importing}>
+        <fieldset
+          disabled={!importing}
+          className={!importing ? "text-muted-foreground" : undefined}
+        >
           <legend className="mb-1 text-sm font-medium">Natureza</legend>
-          <div className="grid grid-cols-2 rounded-lg border border-border bg-surface p-1 disabled:opacity-50">
+          <div className="grid grid-cols-2 rounded-lg border border-control-border bg-surface p-1">
             {(["entrada", "saida"] as const).map((nature) => (
               <button
                 key={nature}
                 type="button"
                 aria-pressed={item.nature === nature}
                 onClick={() => onChange({ nature })}
-                className={`h-11 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+                className={`h-11 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:text-muted-foreground ${
                   item.nature === nature
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -326,11 +360,20 @@ export default function ImportStatementModal({
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
-  const [activeTab, setActiveTab] = useState<ReviewTab>("new");
+  const categoriesLoadedRef = useRef(categories.length > 0);
+  const [activeTab, setActiveTab] = useState<ReviewTab>(() =>
+    getInitialReviewTab(result, issues),
+  );
   const [review, setReview] = useState(() =>
     createInitialImportReview(result, categories),
   );
   const status = getImportReviewStatus(review);
+
+  useEffect(() => {
+    if (categoriesLoadedRef.current || categories.length === 0) return;
+    setReview((current) => syncSuggestedCategories(current, categories));
+    categoriesLoadedRef.current = true;
+  }, [categories]);
 
   useEffect(() => {
     if (!open) return;
@@ -379,8 +422,6 @@ export default function ImportStatementModal({
     duplicate: result.duplicates.length,
     issue: issues.length,
   };
-  const activeReview = review.filter((item) => item.group === activeTab);
-
   const updateReview = (
     group: ReviewGroup,
     sourceRow: number,
@@ -497,47 +538,69 @@ export default function ImportStatementModal({
               ))}
             </div>
 
-            <section
-              id={`${titleId}-${activeTab}-panel`}
-              role="tabpanel"
-              aria-labelledby={`${titleId}-${activeTab}-tab`}
-              tabIndex={0}
-              className="space-y-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            >
-              {(activeTab === "new" || activeTab === "conflict") &&
-                activeReview.map((item) => (
-                  <ReviewRow
-                    key={`${item.group}-${item.row.sourceRow}`}
-                    item={item}
-                    categories={categories}
-                    onChange={(changes) =>
-                      updateReview(item.group, item.row.sourceRow, changes)
-                    }
-                  />
-                ))}
-              {activeTab === "duplicate" &&
-                result.duplicates.map((row) => (
-                  <ReadOnlyRow key={row.sourceRow} row={row} label="Duplicada — será ignorada" icon={Copy} />
-                ))}
-              {activeTab === "issue" &&
-                issues.map((issue) => (
-                  <article key={`${issue.sourceRow}-${issue.message}`} className="rounded-xl border border-destructive/30 bg-background p-4">
-                    <div className="flex gap-3">
-                      <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" aria-hidden />
-                      <div>
-                        <p className="font-medium">Linha {issue.sourceRow}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{issue.message}</p>
-                        <p className="mt-2 text-xs font-medium text-destructive">Com erro — não será importada</p>
-                      </div>
+            {tabs.map((tab) => {
+              const tabReview = review.filter((item) => item.group === tab);
+              return (
+                <section
+                  key={tab}
+                  id={`${titleId}-${tab}-panel`}
+                  role="tabpanel"
+                  aria-labelledby={`${titleId}-${tab}-tab`}
+                  tabIndex={activeTab === tab ? 0 : -1}
+                  hidden={activeTab !== tab}
+                  className="space-y-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  {(tab === "new" || tab === "conflict") &&
+                    tabReview.map((item) => (
+                      <ReviewRow
+                        key={`${item.group}-${item.row.sourceRow}`}
+                        item={item}
+                        categories={categories}
+                        onChange={(changes) =>
+                          updateReview(item.group, item.row.sourceRow, changes)
+                        }
+                      />
+                    ))}
+                  {tab === "duplicate" &&
+                    result.duplicates.map((row) => (
+                      <ReadOnlyRow
+                        key={row.sourceRow}
+                        row={row}
+                        label="Duplicada — será ignorada"
+                        icon={Copy}
+                      />
+                    ))}
+                  {tab === "issue" &&
+                    issues.map((issue) => (
+                      <article
+                        key={`${issue.sourceRow}-${issue.message}`}
+                        className="rounded-xl border border-destructive/30 bg-background p-4"
+                      >
+                        <div className="flex gap-3">
+                          <AlertTriangle
+                            className="mt-0.5 size-5 shrink-0 text-destructive"
+                            aria-hidden
+                          />
+                          <div>
+                            <p className="font-medium">Linha {issue.sourceRow}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {issue.message}
+                            </p>
+                            <p className="mt-2 text-xs font-medium text-destructive">
+                              Com erro — não será importada
+                            </p>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  {counts[tab] === 0 && (
+                    <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                      Nenhuma linha neste grupo.
                     </div>
-                  </article>
-                ))}
-              {counts[activeTab] === 0 && (
-                <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                  Nenhuma linha neste grupo.
-                </div>
-              )}
-            </section>
+                  )}
+                </section>
+              );
+            })}
           </div>
 
           <footer className="sticky bottom-0 border-t border-border bg-surface/95 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:px-6 sm:pb-4">
