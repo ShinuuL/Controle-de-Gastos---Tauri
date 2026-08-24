@@ -60,6 +60,8 @@ export function reconcileStatement(rows: ParsedStatementRow[], existing: Reconci
       continue;
     }
 
+    knownKeys.add(key);
+
     if (candidates.some((candidate) => isPossibleConflict(row, candidate))) {
       conflicts.push(row);
       continue;
@@ -67,7 +69,6 @@ export function reconcileStatement(rows: ParsedStatementRow[], existing: Reconci
 
     newRows.push(row);
     candidates.push(row);
-    knownKeys.add(key);
   }
 
   return { newRows, duplicates, conflicts };

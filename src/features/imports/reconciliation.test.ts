@@ -65,6 +65,18 @@ describe("reconciliação de extrato", () => {
     });
   });
 
+  it("classifica a repetição de uma linha em conflito como duplicata interna", () => {
+    const conflict = row({ sourceRow: 2, description: "Mercado Central Online SP" });
+    const repeatedConflict = row({ sourceRow: 3, description: "MERCADO CENTRAL ONLINE SP" });
+    const existing = [{ id: "expense-1", ...row({ description: "Mercado Central Online" }) }];
+
+    expect(reconcileStatement([conflict, repeatedConflict], existing)).toEqual({
+      newRows: [],
+      duplicates: [repeatedConflict],
+      conflicts: [conflict],
+    });
+  });
+
   it("mantém registros de mesmo valor com descrições sem relação como novos", () => {
     const uploaded = row({ description: "Farmácia Popular" });
     const existing = [{ id: "expense-1", ...row({ description: "Mercado Central" }) }];
