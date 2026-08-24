@@ -251,15 +251,20 @@ mod tests {
     use super::{persist_statement_import, ApprovedImportLine, GENERIC_IMPORT_ERROR};
     use sqlx::{sqlite::SqlitePoolOptions, Executor};
 
-    fn approved(fingerprint: &str, description: &str) -> ApprovedImportLine {
+    fn approved(
+        fingerprint: &str,
+        description: &str,
+        category_id: &str,
+        create_category_name: Option<&str>,
+    ) -> ApprovedImportLine {
         ApprovedImportLine {
-            category_id: "food".to_string(),
+            category_id: category_id.to_string(),
             description: description.to_string(),
             amount_cents: 1250,
             date: "2026-01-10".to_string(),
             nature: "saida".to_string(),
             fingerprint: fingerprint.to_string(),
-            create_category_name: None,
+            create_category_name: create_category_name.map(str::to_string),
         }
     }
 
@@ -292,7 +297,10 @@ mod tests {
 
             let result = persist_statement_import(
                 &pool,
-                &[approved("first", "primeira"), approved("second", "falhar")],
+                &[
+                    approved("first", "primeira", "from-csv", Some("Mercado")),
+                    approved("second", "falhar", "food", None),
+                ],
             )
             .await;
 
@@ -302,6 +310,13 @@ mod tests {
                 .await
                 .expect("count expenses");
             assert_eq!(count, 0);
+            let created_categories: i64 =
+                sqlx::query_scalar("SELECT COUNT(*) FROM categories WHERE name = $1")
+                    .bind("Mercado")
+                    .fetch_one(&pool)
+                    .await
+                    .expect("count created categories");
+            assert_eq!(created_categories, 0);
         });
     }
 }
