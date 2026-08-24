@@ -4,6 +4,8 @@ import {
   type ParsedStatement,
 } from "./itauCsv";
 import type { ReconciliationResult } from "./reconciliation";
+import type { ReconciliationCandidate } from "./reconciliation";
+import type { ApprovedImportLine } from "../../lib/types";
 
 export const MAX_IMPORT_FILE_BYTES = 5 * 1024 * 1024;
 // A prévia renderiza controles por linha; este limite mantém o DOM utilizável.
@@ -38,6 +40,108 @@ export type ImportAction =
 export interface ImportTransition {
   state: ImportState;
   intent?: "reloadMonthAndCategories";
+}
+
+export interface ImportPreviewDependencies {
+  findCandidates: (
+    rows: ParsedStatement["rows"],
+  ) => Promise<ReconciliationCandidate[]>;
+  reconcile: (
+    rows: ParsedStatement["rows"],
+    candidates: ReconciliationCandidate[],
+  ) => ReconciliationResult;
+}
+
+export interface ImportConfirmationDependencies {
+  confirm: (lines: ApprovedImportLine[]) => Promise<unknown>;
+  reload: () => Promise<void>;
+  publishState?: (state: ImportState) => void;
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return fallback;
+}
+
+function parseImportBytes(bytes: ArrayBuffer): ParsedStatement {
+  const parsed = parseItauCsv(bytes);
+  const reviewSizeError = validateImportReviewSize(
+    parsed.rows.length + parsed.issues.length,
+  );
+  if (reviewSizeError) throw new Error(reviewSizeError);
+  return parsed;
+}
+
+export async function prepareImportPreview(
+  input: { fileName: string; bytes: ArrayBuffer },
+  dependencies: ImportPreviewDependencies,
+): Promise<ImportState> {
+  let parsed: ParsedStatement;
+  try {
+    parsed = parseImportBytes(input.bytes);
+  } catch (error) {
+    return {
+      kind: "error",
+      message: errorMessage(
+        error,
+        "Não foi possível interpretar o extrato CSV.",
+      ),
+    };
+  }
+
+  try {
+    const candidates = await dependencies.findCandidates(parsed.rows);
+    return {
+      kind: "preview",
+      preview: {
+        fileName: input.fileName,
+        reconciliation: dependencies.reconcile(parsed.rows, candidates),
+        issues: parsed.issues,
+      },
+    };
+  } catch {
+    return {
+      kind: "error",
+      message: "Não foi possível comparar o extrato com as movimentações.",
+    };
+  }
+}
+
+export async function confirmImportPreview(
+  state: ImportState,
+  lines: ApprovedImportLine[],
+  dependencies: ImportConfirmationDependencies,
+): Promise<ImportState> {
+  const confirmation = transitionImportState(state, {
+    type: "confirmationStarted",
+    canConfirm: canConfirmImport(lines),
+  });
+  if (confirmation.state.kind !== "confirming") return confirmation.state;
+
+  dependencies.publishState?.(confirmation.state);
+  try {
+    await dependencies.confirm(lines);
+  } catch (error) {
+    const failed = transitionImportState(confirmation.state, {
+      type: "confirmationFailed",
+      message: errorMessage(
+        error,
+        "Não foi possível importar as movimentações.",
+      ),
+    }).state;
+    dependencies.publishState?.(failed);
+    return failed;
+  }
+
+  const success = transitionImportState(confirmation.state, {
+    type: "confirmationSucceeded",
+  });
+  dependencies.publishState?.(success.state);
+  if (success.intent === "reloadMonthAndCategories") {
+    await dependencies.reload();
+  }
+  return success.state;
 }
 
 export function canConfirmImport(
@@ -111,23 +215,15 @@ interface ImportFileReader {
   arrayBuffer: () => Promise<ArrayBuffer>;
 }
 
-export async function readImportFileForReview(
+export async function readImportFileBytes(
   file: ImportFileReader,
-): Promise<ParsedStatement> {
+): Promise<ArrayBuffer> {
   const fileSizeError = validateImportFileSize(file.size);
   if (fileSizeError) throw new Error(fileSizeError);
 
-  let bytes: ArrayBuffer;
   try {
-    bytes = await file.arrayBuffer();
+    return await file.arrayBuffer();
   } catch {
     throw new Error("Não foi possível ler o arquivo selecionado.");
   }
-
-  const parsed = parseItauCsv(bytes);
-  const reviewSizeError = validateImportReviewSize(
-    parsed.rows.length + parsed.issues.length,
-  );
-  if (reviewSizeError) throw new Error(reviewSizeError);
-  return parsed;
 }

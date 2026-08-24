@@ -2,13 +2,17 @@ import { describe, expect, it } from "vitest";
 import type { StatementImportPreview } from "./importController";
 import {
   canConfirmImport,
+  confirmImportPreview,
   MAX_IMPORT_FILE_BYTES,
   MAX_IMPORT_REVIEW_ROWS,
-  readImportFileForReview,
+  prepareImportPreview,
+  readImportFileBytes,
   transitionImportState,
   validateImportFileSize,
   validateImportReviewSize,
 } from "./importController";
+import { reconcileStatement } from "./reconciliation";
+import type { ApprovedImportLine } from "../../lib/types";
 
 const preview: StatementImportPreview = {
   fileName: "extrato.csv",
@@ -16,7 +20,130 @@ const preview: StatementImportPreview = {
   issues: [],
 };
 
+const approvedLine: ApprovedImportLine = {
+  date: "2026-01-06",
+  description: "Compra de teste",
+  amount_cents: 2_500,
+  nature: "saida",
+  category_id: "categoria-teste",
+  fingerprint: "2026-01-06|saida|2500|compra de teste",
+};
+
 describe("controlador da importação na tela de movimentações", () => {
+  it("orquestra bytes → parser → candidatos → conciliação → prévia", async () => {
+    const calls: string[] = [];
+    const bytes = new TextEncoder().encode(
+      [
+        "Data;Histórico;Valor;Tipo",
+        "05/01/2026;Item repetido;12,50;D",
+        "06/01/2026;Item novo;25,00;C",
+      ].join("\n"),
+    ).buffer;
+
+    const state = await prepareImportPreview(
+      { fileName: "qa.csv", bytes },
+      {
+        async findCandidates(rows) {
+          calls.push(`candidatos:${rows.length}`);
+          return [
+            {
+              id: "existente",
+              date: "2026-01-05",
+              description: "Item repetido",
+              amount_cents: 1_250,
+              nature: "saida",
+            },
+          ];
+        },
+        reconcile(rows, candidates) {
+          calls.push(`conciliar:${candidates.length}`);
+          return reconcileStatement(rows, candidates);
+        },
+      },
+    );
+
+    expect(calls).toEqual(["candidatos:2", "conciliar:1"]);
+    expect(state).toEqual({
+      kind: "preview",
+      preview: {
+        fileName: "qa.csv",
+        issues: [],
+        reconciliation: {
+          newRows: [
+            expect.objectContaining({
+              sourceRow: 3,
+              description: "Item novo",
+              amount_cents: 2_500,
+              nature: "entrada",
+            }),
+          ],
+          conflicts: [],
+          duplicates: [
+            expect.objectContaining({
+              sourceRow: 2,
+              description: "Item repetido",
+            }),
+          ],
+        },
+      },
+    });
+  });
+
+  it("confirma no repositório, fecha e só então recarrega", async () => {
+    const calls: string[] = [];
+    const state = await confirmImportPreview(
+      { kind: "preview", preview },
+      [approvedLine],
+      {
+        async confirm(lines) {
+          calls.push(`confirmar:${lines.length}`);
+        },
+        async reload() {
+          calls.push("recarregar");
+        },
+        publishState(nextState) {
+          calls.push(`estado:${nextState.kind}`);
+        },
+      },
+    );
+
+    expect(calls).toEqual([
+      "estado:confirming",
+      "confirmar:1",
+      "estado:idle",
+      "recarregar",
+    ]);
+    expect(state).toEqual({ kind: "idle" });
+  });
+
+  it("retém a prévia e expõe erro quando o repositório falha", async () => {
+    let reloadCount = 0;
+    const publishedStates: string[] = [];
+    const state = await confirmImportPreview(
+      { kind: "preview", preview },
+      [approvedLine],
+      {
+        async confirm() {
+          throw new Error("Falha controlada");
+        },
+        async reload() {
+          reloadCount += 1;
+        },
+        publishState(nextState) {
+          publishedStates.push(nextState.kind);
+        },
+      },
+    );
+
+    expect(reloadCount).toBe(0);
+    expect(publishedStates).toEqual(["confirming", "error"]);
+    expect(state).toEqual({
+      kind: "error",
+      preview,
+      message: "Falha controlada",
+    });
+  });
+
   it("avança de leitura para prévia somente depois do parsing", () => {
     const parsing = transitionImportState(
       { kind: "idle" },
@@ -106,7 +233,7 @@ describe("controlador da importação na tela de movimentações", () => {
       },
     };
 
-    await expect(readImportFileForReview(file)).rejects.toThrow(
+    await expect(readImportFileBytes(file)).rejects.toThrow(
       "Arquivo CSV excede o limite de 5 MiB.",
     );
     expect(readCount).toBe(0);
@@ -120,6 +247,7 @@ describe("controlador da importação na tela de movimentações", () => {
   });
 
   it("recusa mais de 500 linhas válidas antes de criar a prévia", async () => {
+    let candidateLookupCount = 0;
     const rows = Array.from(
       { length: MAX_IMPORT_REVIEW_ROWS + 1 },
       (_, index) =>
@@ -129,15 +257,21 @@ describe("controlador da importação na tela de movimentações", () => {
       `Data;Histórico;Valor;Tipo\n${rows.join("\n")}`,
     );
 
-    await expect(
-      readImportFileForReview({
-        size: bytes.byteLength,
-        async arrayBuffer() {
-          return bytes.buffer;
+    const state = await prepareImportPreview(
+      { fileName: "grande.csv", bytes: bytes.buffer },
+      {
+        async findCandidates() {
+          candidateLookupCount += 1;
+          return [];
         },
-      }),
-    ).rejects.toThrow(
-      `Este arquivo tem mais de ${MAX_IMPORT_REVIEW_ROWS} linhas.`,
+        reconcile: reconcileStatement,
+      },
     );
+
+    expect(candidateLookupCount).toBe(0);
+    expect(state).toEqual({
+      kind: "error",
+      message: `Este arquivo tem mais de ${MAX_IMPORT_REVIEW_ROWS} linhas. Exporte um período menor para revisar a importação.`,
+    });
   });
 });

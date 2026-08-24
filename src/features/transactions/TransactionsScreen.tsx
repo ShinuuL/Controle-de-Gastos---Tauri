@@ -12,11 +12,10 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import MonthSelector from "../dashboard/MonthSelector";
 import ImportStatementModal from "../imports/ImportStatementModal";
 import {
-  canConfirmImport,
-  readImportFileForReview,
-  transitionImportState,
+  confirmImportPreview,
+  prepareImportPreview,
+  readImportFileBytes,
   validateImportFileSize,
-  type ImportAction,
   type ImportState,
 } from "../imports/importController";
 import { reconcileStatement } from "../imports/reconciliation";
@@ -73,10 +72,6 @@ export default function TransactionsScreen() {
     useState<TransactionWithCategory | null>(null);
   const [importState, setImportState] = useState<ImportState>({ kind: "idle" });
   const importInputRef = useRef<HTMLInputElement>(null);
-
-  const dispatchImport = useCallback((action: ImportAction) => {
-    setImportState((current) => transitionImportState(current, action).state);
-  }, []);
 
   const load = useCallback(async (nextYear: number, nextMonth: number) => {
     setLoading(true);
@@ -152,78 +147,47 @@ export default function TransactionsScreen() {
 
     const fileSizeError = validateImportFileSize(file.size);
     if (fileSizeError) {
-      dispatchImport({ type: "operationFailed", message: fileSizeError });
+      setImportState({ kind: "error", message: fileSizeError });
       return;
     }
 
-    dispatchImport({ type: "parsingStarted", fileName: file.name });
+    setImportState({ kind: "parsing", fileName: file.name });
 
-    let parsed: Awaited<ReturnType<typeof readImportFileForReview>>;
+    let bytes: ArrayBuffer;
     try {
-      parsed = await readImportFileForReview(file);
+      bytes = await readImportFileBytes(file);
     } catch (err) {
-      dispatchImport({
-        type: "operationFailed",
+      setImportState({
+        kind: "error",
         message:
           err instanceof Error
             ? err.message
-            : "Não foi possível interpretar o extrato CSV.",
+            : "Não foi possível ler o arquivo selecionado.",
       });
       return;
     }
 
-    try {
-      const candidates = await findReconciliationCandidates(parsed.rows);
-      dispatchImport({
-        type: "previewReady",
-        preview: {
-          fileName: file.name,
-          reconciliation: reconcileStatement(parsed.rows, candidates),
-          issues: parsed.issues,
+    setImportState(
+      await prepareImportPreview(
+        { fileName: file.name, bytes },
+        {
+          findCandidates: findReconciliationCandidates,
+          reconcile: reconcileStatement,
         },
-      });
-    } catch {
-      dispatchImport({
-        type: "operationFailed",
-        message: "Não foi possível comparar o extrato com as movimentações.",
-      });
-    }
+      ),
+    );
   };
 
   const closeImport = useCallback(() => {
-    dispatchImport({ type: "closed" });
-  }, [dispatchImport]);
+    setImportState({ kind: "idle" });
+  }, []);
 
   const confirmImport = async (lines: ApprovedImportLine[]) => {
-    const confirmation = transitionImportState(importState, {
-      type: "confirmationStarted",
-      canConfirm: canConfirmImport(lines),
+    await confirmImportPreview(importState, lines, {
+      confirm: confirmStatementImport,
+      reload: onImported,
+      publishState: setImportState,
     });
-    if (confirmation.state.kind !== "confirming") return;
-
-    setImportState(confirmation.state);
-    try {
-      await confirmStatementImport(lines);
-    } catch (err) {
-      setImportState(
-        transitionImportState(confirmation.state, {
-          type: "confirmationFailed",
-          message:
-            err instanceof Error
-              ? err.message
-              : typeof err === "string"
-                ? err
-                : "Não foi possível importar as movimentações.",
-        }).state,
-      );
-      return;
-    }
-
-    const success = transitionImportState(confirmation.state, {
-      type: "confirmationSucceeded",
-    });
-    setImportState(success.state);
-    if (success.intent === "reloadMonthAndCategories") await onImported();
   };
 
   const importPreview =

@@ -110,7 +110,7 @@ Não foram alterados parser, reconciliação, repositórios, backend, migraçõe
 
 ## Resultado
 
-Todos os cinco achados importantes foram tratados, junto dos três ajustes menores solicitados. A prévia agora mantém todos os alvos de `aria-controls` no DOM, limita arquivos e volume de revisão antes de renderizar, possui bordas de controles com contraste não textual acima de 3:1, usa um controlador puro testado para a sequência da tela e foi verificada no aplicativo Android real em 375 dp. Também houve inspeção do breakpoint amplo em 1080 dp.
+Nesta rodada foram implementadas as correções dos cinco achados importantes e dos três ajustes menores solicitados. A evidência que faltava para a orquestração real e para a interação do modal no breakpoint desktop foi concluída e registrada na rodada 2 abaixo; somente após essas verificações o conjunto passou a ser considerado integralmente atendido.
 
 ## Implementação da correção
 
@@ -181,3 +181,62 @@ Os testes puros cobrem parsing→prévia, falha de confirmação preservando pr�
 - Todos os painéis continuam montados, mas somente até o teto de 500 linhas e somente o painel ativo participa da navegação por foco.
 - O aviso existente de chunk acima de 500 kB permanece (`715,18 kB`, gzip `219,64 kB`) e não foi ampliado para uma mudança de arquitetura fora do escopo.
 - Alterações concorrentes/não relacionadas em `ROADMAP.md`, `src-tauri/src/migrations.rs`, planos e demais artefatos foram preservadas e excluídas do commit da correção.
+
+---
+
+# Fix round 2/5 — orquestração real e QA desktop
+
+## Resultado comprovado
+
+Com os testes do serviço assíncrono e a interação desktop descritos abaixo, os achados remanescentes da revisão estão agora cobertos por evidência factual: o fluxo real saiu de `TransactionsScreen`, e o modal real foi aberto, manipulado e confirmado em viewport de 1080 dp. Esta é a primeira seção do relatório que afirma a cobertura integral depois dessas duas evidências.
+
+## Serviço de orquestração
+
+- `prepareImportPreview` recebe `fileName` e bytes, executa o parser real, aplica o teto de revisão, chama `findCandidates` injetado, chama a reconciliação injetada e devolve o estado `preview` completo. Erros de parser e lookup retornam estados `error` seguros em pt-BR.
+- `confirmImportPreview` recebe o estado/prévia, linhas aprovadas e callbacks injetados de confirmação, reload e publicação de estado. Publica `confirming`, chama o repositório, publica `idle` antes do reload em sucesso e, em falha do repositório, publica/devolve `error` com a mesma referência de prévia e não chama reload.
+- `readImportFileBytes` preserva a defesa de 5 MiB antes de `arrayBuffer()`. A tela lê os bytes e injeta `findReconciliationCandidates`, `reconcileStatement`, `confirmStatementImport`, `onImported` e `setImportState`; não contém mais a sequência parser→lookup→reconcile nem repository→reload.
+- A antiga helper `readImportFileForReview`, que misturava leitura e parsing, foi removida. O teto de 500 linhas é testado no serviço real antes do lookup.
+
+## TDD da rodada 2
+
+### RED
+
+Antes da produção, foram adicionados três testes de orquestração. A execução `npm.cmd test -- src/features/imports/importController.test.ts` falhou 3/12 como esperado, com `prepareImportPreview is not a function` e `confirmImportPreview is not a function`.
+
+### GREEN
+
+- O teste de preparação usa bytes CSV reais e `reconcileStatement`: comprova a ordem lookup→reconcile, duas linhas parseadas, uma duplicata e uma nova na prévia.
+- O teste de confirmação comprova a ordem exata `estado:confirming` → callback de repositório → `estado:idle` → reload.
+- O teste de falha comprova que reload não ocorre e que a mesma prévia permanece no estado `error` com a mensagem do repositório.
+- O teste de 500 linhas comprova que o serviço retorna erro antes de chamar lookup de candidatos.
+
+## QA desktop completo
+
+- O navegador integrado do ambiente não estava disponível (`agent.browsers.list()` retornou `[]`). Foi usada a alternativa confiável permitida: Chrome do emulador com o componente real servido por um harness Vite temporário e dados exclusivamente fictícios.
+- O Vite foi ligado somente no loopback IPv4 `127.0.0.1:1420`, acessível ao emulador por um túnel local `adb reverse`; não houve exposição em `0.0.0.0`.
+- `dumpsys window displays` confirmou `1080x2400 @ 160 dpi`, com `sw1080dp w1080dp h2400dp`. Portanto, o modal foi efetivamente renderizado acima do requisito de 1024 px CSS, no breakpoint desktop.
+- Estado inicial (`task4-desktop-modal-initial.png`): modal centralizado, quatro cards com contagens Novas 2/Conflitos 1/Duplicadas 1/Com erro 1, quatro tabs visíveis, duas linhas novas em duas colunas por card e CTA bloqueado com mensagens de conflito/categoria.
+- Interação de conflito (`task4-desktop-conflict.png`): clique na tab Conflitos abriu o painel correspondente e exibiu a decisão obrigatória com categoria/natureza desabilitadas.
+- Interação de revisão (`task4-desktop-modal-ready.png`): o conflito fictício foi marcado como Ignorar; em Novas, foi escolhida a categoria Alimentação para a segunda linha e a natureza foi alterada de Saída para Entrada. O valor mudou visualmente para `+R$ 29,90`, o rodapé passou a “2 movimentações prontas para importar” e o CTA `Importar 2 movimentações` ficou habilitado.
+- Confirmação (`task4-desktop-confirmed.png`): clique no CTA fechou o modal e o harness registrou `Confirmado: 2 linhas`.
+- O harness temporário continha somente descrições e valores inventados (`Padaria de teste`, `Assinatura fictícia`, `Serviço exemplo`) e foi removido após a validação.
+- Cleanup confirmado: túnel `adb reverse` removido, densidade restaurada para 420 dpi, Vite encerrado e nenhuma entrada permaneceu na porta 1420.
+
+## Verificação final da rodada 2
+
+- Focados: `npm.cmd test -- src/features/imports/importController.test.ts src/features/imports/ImportStatementModal.test.ts src/features/imports/ImportStatementModal.markup.test.tsx` — PASS, 3 arquivos/20 testes.
+- Suite completa: `npm.cmd test` — PASS, 13 arquivos/99 testes.
+- `npm.cmd run typecheck` — PASS.
+- `npm.cmd run lint` — PASS.
+- `npm.cmd run build` — PASS, 2.835 módulos transformados.
+- O warning de chunk permanece (`715,51 kB`, gzip `219,80 kB`) e continua fora do escopo funcional.
+
+## Arquivos e auto-revisão
+
+- `src/features/imports/importController.ts` — serviço puro/injetável de preparação e confirmação, mais leitura protegida dos bytes.
+- `src/features/imports/importController.test.ts` — integração real das sequências e ordem dos callbacks.
+- `src/features/transactions/TransactionsScreen.tsx` — reduzida a adaptador de eventos, dependências e estado React.
+- `.superpowers/sdd/2026-08-24-importacao-csv-itau/task-4-report.md` — evidência desta rodada e correção da afirmação prematura.
+- Nenhuma dependência, parser, algoritmo de reconciliação, repositório, backend ou migração foi alterado.
+- A publicação opcional de estado é uma dependência injetada para preservar imediatamente o spinner/disabled durante confirmação; os testes verificam sua ordem em relação ao repositório e ao reload.
+- Mudanças concorrentes em `ROADMAP.md`, `src-tauri/src/migrations.rs`, brainstorm e planos continuam fora do escopo e do commit.
