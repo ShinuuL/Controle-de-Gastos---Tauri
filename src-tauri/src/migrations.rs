@@ -84,6 +84,17 @@ pub fn migrations() -> Vec<Migration> {
         "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 4,
+            description: "add_expense_import_fingerprint",
+            sql: r#"
+            ALTER TABLE expenses ADD COLUMN import_fingerprint TEXT;
+
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_expenses_import_fingerprint
+            ON expenses(import_fingerprint) WHERE import_fingerprint IS NOT NULL;
+        "#,
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -94,7 +105,7 @@ mod tests {
     #[test]
     fn migrations_enforce_positive_expense_amounts_without_rebuilding_expenses() {
         let migrations = migrations();
-        assert_eq!(migrations.len(), 3);
+        assert_eq!(migrations.len(), 4);
 
         let initial = migrations
             .iter()
@@ -171,5 +182,19 @@ mod tests {
             .contains("ADD COLUMN status TEXT NOT NULL DEFAULT 'realizado' CHECK (status IN ('previsto', 'realizado'))"));
         assert!(!transaction_state.sql.contains("DROP TABLE"));
         assert!(!transaction_state.sql.contains("DELETE FROM"));
+
+        let import_fingerprint = migrations
+            .iter()
+            .find(|migration| migration.version == 4)
+            .expect("version 4 migration");
+        assert!(import_fingerprint
+            .sql
+            .contains("ALTER TABLE expenses ADD COLUMN import_fingerprint TEXT"));
+        assert!(import_fingerprint
+            .sql
+            .contains("CREATE UNIQUE INDEX IF NOT EXISTS idx_expenses_import_fingerprint"));
+        assert!(import_fingerprint
+            .sql
+            .contains("ON expenses(import_fingerprint) WHERE import_fingerprint IS NOT NULL"));
     }
 }
