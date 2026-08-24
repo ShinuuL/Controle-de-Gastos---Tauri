@@ -2,7 +2,7 @@
 
 **Data:** 2026-08-24  
 **Branch:** `feat/moranguinho-theme`  
-**Status:** aprovado para especificação; aguardando revisão deste documento antes do plano de implementação.
+**Status:** aprovado para implementação.
 
 ## Objetivo
 
@@ -70,7 +70,7 @@ No Dashboard, um cartão de contexto de saldo, colocado após o cabeçalho e ant
 
 Em telas largas, ilustração e texto ficam lado a lado. Em telas estreitas, o cartão ocupa toda a largura e a ilustração reduz sem cortar rosto, expressão ou conteúdo financeiro.
 
-O fundo do app usa rosa-bebê com morangos soltos e discretos, derivados dos assets fornecidos. O padrão é decorativo: baixa opacidade, sem texto sobre ele e sem competir com conteúdo, gráficos ou controles. Superfícies interativas permanecem opacas ou quase opacas para leitura confiável.
+O fundo do app usa rosa-bebê uniforme (`#F2CBD1`) com morangos ilustrados soltos, seguindo a referência visual aprovada na conversa. O padrão usa um SVG local e repetível de morango desenhado, com tamanhos e rotações variados. Algumas ilustrações ficam parcialmente atrás de cards para criar profundidade; nenhum morango fica sobre texto, controles, gráficos ou área clicável. A moldura-jardim é sutil e restrita às bordas inferiores. Superfícies interativas permanecem opacas ou quase opacas para leitura confiável.
 
 ### Tokens Moranguinho
 
@@ -78,7 +78,7 @@ Os tokens abaixo são aplicados somente quando a preferência resolvida é `stra
 
 | Token | Valor | Uso |
 |---|---|---|
-| `--background` | `#FFF3F7` | fundo rosa-bebê do app |
+| `--background` | `#F2CBD1` | fundo rosa-bebê do app |
 | `--surface` | `#FFFCFD` | cards, sidebar e menus |
 | `--foreground` | `#3F1427` | texto principal |
 | `--muted-foreground` | `#704458` | texto auxiliar |
@@ -110,7 +110,8 @@ O tema não usa rosa como único indicador de significado: sucesso, alerta, erro
 3. O CSS move os tokens atuais de regras implícitas por mídia para seletores explícitos por `data-theme`; as regras de mídia permanecem somente como resolução do modo `system` pelo provedor.
 4. Um componente reutilizável de seletor de aparência é renderizado na sidebar e no cabeçalho móvel, com a mesma fonte de estado.
 5. Um módulo puro mapeia `realized_cents` para uma das seis reações. Um componente de cartão consome esse módulo e o manifesto semântico de assets.
-6. O Dashboard fornece o resultado realizado já calculado e o mês selecionado; nenhum repositório, SQL ou comando Rust é alterado.
+6. Um SVG local de morango ilustrado cria o padrão de fundo do tema Moranguinho; CSS controla repetição, posição e opacidade, sem carregar imagem externa.
+7. O Dashboard fornece o resultado realizado já calculado e o mês selecionado; nenhum repositório, SQL ou comando Rust é alterado.
 
 ## Erros e estados limite
 
@@ -131,7 +132,7 @@ O tema não usa rosa como único indicador de significado: sucesso, alerta, erro
 
 1. Usuário escolhe qualquer uma das quatro opções e a escolha sobrevive ao reinício do app.
 2. `system` acompanha a mudança de Claro/Escuro do dispositivo; as outras escolhas não acompanham essa mudança.
-3. Moranguinho aplica os tokens rosa e o padrão decorativo sem reduzir a legibilidade de conteúdo, formulários ou modais.
+3. Moranguinho aplica os tokens rosa e o padrão de morangos desenhados, incluindo morangos parcialmente atrás de cards, sem reduzir a legibilidade de conteúdo, formulários ou modais.
 4. Para cada um dos seis limites de saldo, o Dashboard mostra a reação fornecida correspondente e troca corretamente nas fronteiras de R$ 0,00, R$ 50,00, R$ 150,01, R$ 300,01 e R$ 500,01.
 5. Movimentações previstas não afetam a reação; realizadas afetam.
 6. O seletor é acessível por mouse, toque e teclado, e o modo de movimento reduzido não anima a personagem.
