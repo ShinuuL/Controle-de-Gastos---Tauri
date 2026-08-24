@@ -30,11 +30,18 @@ function decode(bytes: ArrayBuffer): string {
   }
 }
 
-function recordsOf(text: string): string[][] {
-  const records: string[][] = [];
+interface CsvRecord {
+  fields: string[];
+  sourceRow: number;
+}
+
+function recordsOf(text: string): CsvRecord[] {
+  const records: CsvRecord[] = [];
   let record: string[] = [];
   let field = "";
   let quoted = false;
+  let line = 1;
+  let recordStartLine = 1;
 
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index];
@@ -48,6 +55,7 @@ function recordsOf(text: string): string[][] {
         }
       } else {
         field += character;
+        if (character === "\n") line += 1;
       }
     } else if (character === '"' && field.length === 0) {
       quoted = true;
@@ -56,9 +64,11 @@ function recordsOf(text: string): string[][] {
       field = "";
     } else if (character === "\n") {
       record.push(field.endsWith("\r") ? field.slice(0, -1) : field);
-      records.push(record);
+      records.push({ fields: record, sourceRow: recordStartLine });
       record = [];
       field = "";
+      line += 1;
+      recordStartLine = line;
     } else {
       field += character;
     }
@@ -66,7 +76,7 @@ function recordsOf(text: string): string[][] {
   if (quoted) throw new Error("Formato CSV não suportado: campo entre aspas não foi encerrado");
   if (field.length > 0 || record.length > 0) {
     record.push(field.endsWith("\r") ? field.slice(0, -1) : field);
-    records.push(record);
+    records.push({ fields: record, sourceRow: recordStartLine });
   }
   return records;
 }
@@ -100,10 +110,10 @@ export function parseItauCsv(bytes: ArrayBuffer): ParsedStatement {
   const text = decode(bytes);
   if (!text.trim()) throw new Error("Arquivo CSV vazio");
 
-  const records = recordsOf(text).filter((record) => record.some((field) => field.trim() !== ""));
+  const records = recordsOf(text).filter((record) => record.fields.some((field) => field.trim() !== ""));
   if (records.length === 0) throw new Error("Arquivo CSV vazio");
-  if (records[0].length < 2) throw new Error("Formato CSV não suportado");
-  const header = records[0].map(normalizeHeader);
+  if (records[0].fields.length < 2) throw new Error("Formato CSV não suportado");
+  const header = records[0].fields.map(normalizeHeader);
   const find = (...names: string[]) => names.map(normalizeHeader).map((name) => header.indexOf(name)).find((index) => index >= 0);
   const dateIndex = find("Data");
   const descriptionIndex = find("Histórico", "Lançamento");
@@ -118,12 +128,12 @@ export function parseItauCsv(bytes: ArrayBuffer): ParsedStatement {
 
   const rows: ParsedStatementRow[] = [];
   const issues: CsvIssue[] = [];
-  dataRecords.forEach((record, offset) => {
-    const sourceRow = offset + 2;
-    const date = parseDate(record[dateIndex] ?? "");
-    const amount = parseAmount(record[amountIndex] ?? "");
-    const type = (record[typeIndex] ?? "").trim().toUpperCase();
-    const description = (record[descriptionIndex] ?? "").trim();
+  dataRecords.forEach((record) => {
+    const sourceRow = record.sourceRow;
+    const date = parseDate(record.fields[dateIndex] ?? "");
+    const amount = parseAmount(record.fields[amountIndex] ?? "");
+    const type = (record.fields[typeIndex] ?? "").trim().toUpperCase();
+    const description = (record.fields[descriptionIndex] ?? "").trim();
     if (!date) {
       issues.push({ sourceRow, message: "Data inválida" });
     } else if (amount === null) {
@@ -133,7 +143,7 @@ export function parseItauCsv(bytes: ArrayBuffer): ParsedStatement {
     } else if (!description) {
       issues.push({ sourceRow, message: "Descrição inválida" });
     } else {
-      const category = categoryIndex === undefined ? undefined : record[categoryIndex]?.trim();
+      const category = categoryIndex === undefined ? undefined : record.fields[categoryIndex]?.trim();
       rows.push({ sourceRow, date, description, amount_cents: amount, nature: type === "C" ? "entrada" : "saida", ...(category ? { suggestedCategoryName: category } : {}) });
     }
   });

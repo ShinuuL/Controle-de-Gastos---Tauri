@@ -53,6 +53,18 @@ describe("parseItauCsv", () => {
     expect(parsed.issues).toMatchObject([{ sourceRow: 3, message: expect.stringContaining("Data") }]);
   });
 
+  it("preserva a linha física após linha vazia e registro citado multilinha", () => {
+    const parsed = parseItauCsv(utf8([
+      "Data;Histórico;Valor;Tipo",
+      "",
+      '05/01/2026;"Descrição\ncontinua";10,00;C',
+      "31/02/2026;Data inválida;10,00;C",
+    ].join("\n")));
+
+    expect(parsed.rows[0]?.sourceRow).toBe(3);
+    expect(parsed.issues).toEqual([{ sourceRow: 5, message: "Data inválida" }]);
+  });
+
   it.each([
     ["data inválida", "32/01/2026;Teste;10,00;C", "data"],
     ["valor inválido", "01/01/2026;Teste;abc;C", "valor"],
