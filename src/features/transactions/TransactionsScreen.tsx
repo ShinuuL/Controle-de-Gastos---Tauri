@@ -1,9 +1,21 @@
-import { useCallback, useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
+import { FileUp, LoaderCircle, Plus } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import MonthSelector from "../dashboard/MonthSelector";
+import ImportStatementModal from "../imports/ImportStatementModal";
+import { parseItauCsv, type CsvIssue } from "../imports/itauCsv";
+import {
+  reconcileStatement,
+  type ReconciliationResult,
+} from "../imports/reconciliation";
 import TransactionForm from "./TransactionForm";
 import TransactionList from "./TransactionList";
 import { calculateMonthlyResult } from "./summary";
@@ -14,9 +26,14 @@ import {
   updateTransaction,
 } from "../../lib/repositories/transactions";
 import { listCategories } from "../../lib/repositories/categories";
+import {
+  confirmStatementImport,
+  findReconciliationCandidates,
+} from "../../lib/repositories/imports";
 import { formatDateBR, formatMonthLabel } from "../../lib/date";
 import { formatSignedBRL } from "../../lib/currency";
 import type {
+  ApprovedImportLine,
   Category,
   CreateTransactionInput,
   TransactionWithCategory,
@@ -26,6 +43,19 @@ type FormState =
   | { mode: "create" }
   | { mode: "edit"; transaction: TransactionWithCategory }
   | null;
+
+interface StatementPreview {
+  fileName: string;
+  reconciliation: ReconciliationResult;
+  issues: CsvIssue[];
+}
+
+type ImportState =
+  | { kind: "idle" }
+  | { kind: "parsing"; fileName: string }
+  | { kind: "preview"; preview: StatementPreview }
+  | { kind: "confirming"; preview: StatementPreview }
+  | { kind: "error"; message: string; preview?: StatementPreview };
 
 const selectClass =
   "h-11 w-full max-w-56 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-2 focus:outline-ring";
@@ -50,6 +80,8 @@ export default function TransactionsScreen() {
   const [formState, setFormState] = useState<FormState>(null);
   const [deleteTarget, setDeleteTarget] =
     useState<TransactionWithCategory | null>(null);
+  const [importState, setImportState] = useState<ImportState>({ kind: "idle" });
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async (nextYear: number, nextMonth: number) => {
     setLoading(true);
@@ -65,19 +97,23 @@ export default function TransactionsScreen() {
     }
   }, []);
 
+  const loadCategories = useCallback(async () => {
+    try {
+      setCategories(await listCategories());
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Erro ao carregar categorias.",
+      );
+    }
+  }, []);
+
   useEffect(() => {
     void load(year, month);
   }, [load, year, month]);
 
   useEffect(() => {
-    listCategories()
-      .then(setCategories)
-      .catch((err: unknown) => {
-        setError(
-          err instanceof Error ? err.message : "Erro ao carregar categorias.",
-        );
-      });
-  }, []);
+    void loadCategories();
+  }, [loadCategories]);
 
   const handleMonthChange = useCallback(
     (nextYear: number, nextMonth: number) => {
@@ -110,6 +146,99 @@ export default function TransactionsScreen() {
     }
   };
 
+  const onImported = useCallback(async (): Promise<void> => {
+    await Promise.all([load(year, month), loadCategories()]);
+  }, [load, loadCategories, month, year]);
+
+  const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) return;
+
+    setImportState({ kind: "parsing", fileName: file.name });
+
+    let bytes: ArrayBuffer;
+    try {
+      bytes = await file.arrayBuffer();
+    } catch {
+      setImportState({
+        kind: "error",
+        message: "Não foi possível ler o arquivo selecionado.",
+      });
+      return;
+    }
+
+    let parsed: ReturnType<typeof parseItauCsv>;
+    try {
+      parsed = parseItauCsv(bytes);
+    } catch (err) {
+      setImportState({
+        kind: "error",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Não foi possível interpretar o extrato CSV.",
+      });
+      return;
+    }
+
+    try {
+      const candidates = await findReconciliationCandidates(parsed.rows);
+      setImportState({
+        kind: "preview",
+        preview: {
+          fileName: file.name,
+          reconciliation: reconcileStatement(parsed.rows, candidates),
+          issues: parsed.issues,
+        },
+      });
+    } catch {
+      setImportState({
+        kind: "error",
+        message: "Não foi possível comparar o extrato com as movimentações.",
+      });
+    }
+  };
+
+  const closeImport = useCallback(() => {
+    setImportState({ kind: "idle" });
+  }, []);
+
+  const confirmImport = async (lines: ApprovedImportLine[]) => {
+    if (importState.kind !== "preview" && importState.kind !== "error") {
+      return;
+    }
+    const preview = importState.preview;
+    if (!preview) return;
+
+    setImportState({ kind: "confirming", preview });
+    try {
+      await confirmStatementImport(lines);
+    } catch (err) {
+      setImportState({
+        kind: "error",
+        preview,
+        message:
+          err instanceof Error
+            ? err.message
+            : typeof err === "string"
+              ? err
+              : "Não foi possível importar as movimentações.",
+      });
+      return;
+    }
+
+    setImportState({ kind: "idle" });
+    await onImported();
+  };
+
+  const importPreview =
+    importState.kind === "preview" ||
+    importState.kind === "confirming" ||
+    (importState.kind === "error" && importState.preview)
+      ? importState.preview
+      : undefined;
+
   const filtered =
     filterCategory === "all"
       ? transactions
@@ -131,11 +260,56 @@ export default function TransactionsScreen() {
         >
           Movimentações
         </h2>
-        <Button onClick={() => setFormState({ mode: "create" })}>
-          <Plus className="size-4" aria-hidden />
-          Adicionar
-        </Button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            aria-label="Selecionar extrato CSV do Itaú"
+            onChange={(event) => void handleImportFile(event)}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            className="whitespace-nowrap border border-border"
+            disabled={importState.kind === "parsing"}
+            onClick={() => importInputRef.current?.click()}
+          >
+            {importState.kind === "parsing" ? (
+              <LoaderCircle className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <FileUp className="size-4" aria-hidden />
+            )}
+            {importState.kind === "parsing"
+              ? "Lendo extrato…"
+              : "Importar extrato"}
+          </Button>
+          <Button onClick={() => setFormState({ mode: "create" })}>
+            <Plus className="size-4" aria-hidden />
+            Adicionar
+          </Button>
+        </div>
       </div>
+
+      {importState.kind === "parsing" && (
+        <p
+          className="text-sm text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          Preparando a prévia de {importState.fileName}…
+        </p>
+      )}
+
+      {importState.kind === "error" && !importState.preview && (
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/40 p-4 text-sm text-destructive"
+        >
+          {importState.message}
+        </p>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <MonthSelector year={year} month={month} onChange={handleMonthChange} />
@@ -264,6 +438,24 @@ export default function TransactionsScreen() {
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      {importPreview && (
+        <ImportStatementModal
+          open
+          fileName={importPreview.fileName}
+          categories={categories}
+          result={importPreview.reconciliation}
+          issues={importPreview.issues}
+          submitting={importState.kind === "confirming"}
+          error={
+            importState.kind === "error" && importState.preview
+              ? importState.message
+              : null
+          }
+          onConfirm={confirmImport}
+          onClose={closeImport}
+        />
+      )}
     </section>
   );
 }
