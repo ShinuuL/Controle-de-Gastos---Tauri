@@ -15,4 +15,11 @@ describe("AppearanceSelector", () => {
       expect(markup).toContain(label);
     }
   });
+
+  test("abre o menu compacto abaixo do controle móvel", () => {
+    const markup = renderToStaticMarkup(<AppearanceSelector compact />);
+
+    expect(markup).toContain("top-full");
+    expect(markup).not.toContain("bottom-full");
+  });
 });

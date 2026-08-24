@@ -20,5 +20,29 @@ Foram implementados `ThemeProvider`, `useTheme` e `AppearanceSelector`. O provid
 
 ## Preocupações
 
-- A cobertura solicitada é de markup estático; ela protege a presença das quatro opções, mas não simula interação de teclado, persistência ou troca dinâmica da mídia.
+- Os testes atuais cobrem o markup e o cálculo de navegação; eles não simulam foco real no DOM, persistência ou troca dinâmica da mídia.
 - Alterações preexistentes em `ROADMAP.md`, `src-tauri/src/migrations.rs`, `.superpowers/brainstorm/` e `docs/superpowers/plans/2026-08-24-importacao-csv-itau.md` permanecem fora deste escopo e não devem entrar no commit.
+
+## Correção — round 1/5
+
+### RED
+
+- `AppearanceSelector.markup.test.tsx` passou a exigir que o menu compacto use `top-full` e não `bottom-full`; falhou porque o menu era sempre posicionado acima do gatilho.
+- `AppearanceSelector.keyboard.test.ts` passou a exigir a navegação circular por ArrowUp/ArrowDown e os atalhos Home/End; falhou porque `getNextMenuItemIndex` ainda não existia.
+
+### GREEN
+
+- O menu compacto agora abre abaixo do botão no cabeçalho móvel; a variante desktop preserva `bottom-full`.
+- Escape fecha o menu e devolve o foco ao botão que o abriu.
+- Os `menuitemradio` movimentam o foco entre si com ArrowUp, ArrowDown, Home e End.
+
+### Comandos executados
+
+- `npm.cmd test -- src/features/theme/AppearanceSelector.markup.test.tsx` — RED do posicionamento compacto confirmado.
+- `npm.cmd test -- src/features/theme/AppearanceSelector.keyboard.test.ts` — RED da navegação de teclado confirmado.
+- `npm.cmd test -- src/features/theme/themePreference.test.ts src/features/theme/AppearanceSelector.markup.test.tsx src/features/theme/AppearanceSelector.keyboard.test.ts` — GREEN: 3 arquivos e 8 testes aprovados.
+- `npm.cmd run typecheck` — aprovado, saída `tsc --noEmit` sem erros.
+
+### Commit
+
+- `fix: corrigir navegacao do seletor de aparencia`

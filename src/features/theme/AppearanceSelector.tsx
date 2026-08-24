@@ -1,5 +1,5 @@
 import { Cherry, Monitor, Moon, Palette, Sun } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTheme } from "./ThemeProvider";
 import type { ThemePreference } from "./themePreference";
 
@@ -18,20 +18,48 @@ interface AppearanceSelectorProps {
   compact?: boolean;
 }
 
+export function getNextMenuItemIndex(
+  activeIndex: number,
+  key: string,
+  itemCount: number,
+): number | null {
+  if (itemCount === 0) return null;
+
+  switch (key) {
+    case "ArrowDown":
+      return (activeIndex + 1) % itemCount;
+    case "ArrowUp":
+      return (activeIndex - 1 + itemCount) % itemCount;
+    case "Home":
+      return 0;
+    case "End":
+      return itemCount - 1;
+    default:
+      return null;
+  }
+}
+
 export function AppearanceSelector({ compact = false }: AppearanceSelectorProps) {
   const { preference, setPreference } = useTheme();
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const closeMenu = useCallback((restoreTriggerFocus = false) => {
+    setOpen(false);
+    if (restoreTriggerFocus) triggerRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (!open) return;
 
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") closeMenu(true);
     };
     const closeOnOutsidePointer = (event: PointerEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!containerRef.current?.contains(event.target as Node)) closeMenu();
     };
 
     document.addEventListener("keydown", closeOnEscape);
@@ -40,16 +68,17 @@ export function AppearanceSelector({ compact = false }: AppearanceSelectorProps)
       document.removeEventListener("keydown", closeOnEscape);
       document.removeEventListener("pointerdown", closeOnOutsidePointer);
     };
-  }, [open]);
+  }, [closeMenu, open]);
 
   const choose = (nextPreference: ThemePreference) => {
     setPreference(nextPreference);
-    setOpen(false);
+    closeMenu();
   };
 
   return (
     <div ref={containerRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         aria-controls={menuId}
         aria-expanded={open}
@@ -68,11 +97,16 @@ export function AppearanceSelector({ compact = false }: AppearanceSelectorProps)
         role="menu"
         hidden={!open}
         aria-label="Escolher aparência"
-        className="absolute bottom-full z-30 mb-2 min-w-56 rounded-lg border border-border bg-surface p-1 shadow-lg"
+        className={`absolute z-30 min-w-56 rounded-lg border border-border bg-surface p-1 shadow-lg ${
+          compact ? "top-full mt-2" : "bottom-full mb-2"
+        }`}
       >
-        {OPTIONS.map(({ value, label, Icon }) => (
+        {OPTIONS.map(({ value, label, Icon }, index) => (
           <button
             key={value}
+            ref={(node) => {
+              menuItemRefs.current[index] = node;
+            }}
             type="button"
             role="menuitemradio"
             aria-checked={preference === value}
@@ -82,6 +116,13 @@ export function AppearanceSelector({ compact = false }: AppearanceSelectorProps)
                 : "text-foreground hover:bg-background"
             }`}
             onClick={() => choose(value)}
+            onKeyDown={(event) => {
+              const nextIndex = getNextMenuItemIndex(index, event.key, OPTIONS.length);
+              if (nextIndex === null) return;
+
+              event.preventDefault();
+              menuItemRefs.current[nextIndex]?.focus();
+            }}
           >
             <Icon className="size-4" aria-hidden />
             {label}
