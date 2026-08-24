@@ -31,13 +31,16 @@ describe("theme preference", () => {
   });
 
   test("does not throw when storage is unavailable", () => {
-    expect(() => readThemePreference({ getItem: () => { throw new Error("blocked"); } })).not.toThrow();
+    expect(readThemePreference({ getItem: () => { throw new Error("blocked"); } })).toBe("system");
     expect(() => writeThemePreference("light", { setItem: () => { throw new Error("blocked"); } })).not.toThrow();
   });
 
   test("resolves system preference from the operating system", () => {
     expect(resolveTheme("system", true)).toBe("dark");
+    expect(resolveTheme("system", false)).toBe("light");
     expect(resolveTheme("light", true)).toBe("light");
+    expect(resolveTheme("dark", true)).toBe("dark");
+    expect(resolveTheme("dark", false)).toBe("dark");
     expect(resolveTheme("strawberry", false)).toBe("strawberry");
   });
 });
