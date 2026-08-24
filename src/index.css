@@ -1,7 +1,8 @@
 @import "tailwindcss";
 @import "@fontsource-variable/inter";
 
-:root {
+:root,
+:root[data-theme="light"] {
   --background: #ffffff;
   --surface: #f8fafc;
   --foreground: #0f172a;
@@ -22,27 +23,46 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --surface: #101a34;
-    --foreground: #f8fafc;
-    --muted-foreground: #94a3b8;
-    --border: rgb(255 255 255 / 0.08);
-    --control-border: #94a3b8;
-    --primary: #2563eb;
-    --primary-foreground: #ffffff;
-    --secondary: #60a5fa;
-    --accent: #059669;
-    --accent-foreground: #ffffff;
-    --destructive: #ef4444;
-    --destructive-foreground: #ffffff;
-    --success: #34d399;
-    --warning: #fbbf24;
-    --danger: #f87171;
-    --ring: #2563eb;
-    color-scheme: dark;
-  }
+:root[data-theme="dark"] {
+  --background: #0f172a;
+  --surface: #101a34;
+  --foreground: #f8fafc;
+  --muted-foreground: #94a3b8;
+  --border: rgb(255 255 255 / 0.08);
+  --control-border: #94a3b8;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #60a5fa;
+  --accent: #059669;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --ring: #2563eb;
+  color-scheme: dark;
+}
+
+:root[data-theme="strawberry"] {
+  --background: #fff1f5;
+  --surface: #fffafd;
+  --foreground: #4a1623;
+  --muted-foreground: #86515d;
+  --border: rgb(177 50 79 / 0.24);
+  --control-border: #b2425d;
+  --primary: #c7395c;
+  --primary-foreground: #ffffff;
+  --secondary: #e87593;
+  --accent: #689b53;
+  --accent-foreground: #ffffff;
+  --destructive: #b4233d;
+  --destructive-foreground: #ffffff;
+  --success: #5f8f4d;
+  --warning: #bd6a16;
+  --danger: #c7364d;
+  --ring: #c7395c;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -83,6 +103,27 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  .theme-shell {
+    isolation: isolate;
+    position: relative;
+  }
+
+  :root[data-theme="strawberry"] .theme-shell::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23c7395c' stroke-width='1.5'%3E%3Cpath d='M20 24c0-5 4-9 9-9s9 4 9 9c0 11-9 18-9 18s-9-7-9-18Z'/%3E%3Cpath d='M24 16c1-4 5-6 9-4M29 15c3-3 7-2 9 1'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 72px 72px;
+    content: "";
+    inset: 0;
+    opacity: 0.08;
+    pointer-events: none;
+    position: absolute;
+    z-index: 0;
+  }
+
+  .theme-shell > * {
+    position: relative;
+    z-index: 1;
   }
 
   ::selection {
