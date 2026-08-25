@@ -11,6 +11,8 @@ import { calculateMonthlyResult } from "../transactions/summary";
 import { formatSignedBRL } from "../../lib/currency";
 import { formatMonthLabel } from "../../lib/date";
 import type { CategoryTotal, TransactionWithCategory } from "../../lib/types";
+import { useTheme } from "../theme/ThemeProvider";
+import { BalanceMoodCard } from "./BalanceMoodCard";
 
 function signColor(cents: number): string {
   if (cents > 0) return "text-success";
@@ -19,6 +21,7 @@ function signColor(cents: number): string {
 }
 
 export default function DashboardScreen() {
+  const { resolvedTheme } = useTheme();
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
@@ -87,6 +90,10 @@ export default function DashboardScreen() {
         </h2>
         <MonthSelector year={year} month={month} onChange={handleMonthChange} />
       </div>
+
+      {!error && !loading && resolvedTheme === "strawberry" && (
+        <BalanceMoodCard realizedCents={summary.realized_cents} />
+      )}
 
       {error && (
         <p
