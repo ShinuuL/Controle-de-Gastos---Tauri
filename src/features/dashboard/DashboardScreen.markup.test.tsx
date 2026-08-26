@@ -62,9 +62,12 @@ const transactions: TransactionWithCategory[] = [
   },
 ];
 
-function renderDashboard(resolvedTheme: "light" | "strawberry") {
+function renderDashboard(
+  resolvedTheme: "light" | "strawberry",
+  monthTransactions = transactions,
+) {
   dashboardState.resolvedTheme = resolvedTheme;
-  dashboardState.values = [2026, 8, transactions, [], null, false];
+  dashboardState.values = [2026, 8, monthTransactions, [], null, false];
   dashboardState.index = 0;
 
   return renderToStaticMarkup(<DashboardScreen />);
@@ -91,5 +94,13 @@ describe("DashboardScreen", () => {
 
     expect(card).toContain("−R$\u00a0100,00");
     expect(card).not.toContain("+R$\u00a0900,00");
+  });
+
+  test("mantém o cartão de reação alert no estado vazio do Moranguinho", () => {
+    const card = balanceMoodCard(renderDashboard("strawberry", []));
+
+    expect(card).toContain("R$\u00a00,00");
+    expect(card).toContain("Moranguinho atenta ao saldo baixo");
+    expect(card).toContain("O saldo está baixo. Vale acompanhar os próximos gastos.");
   });
 });

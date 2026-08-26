@@ -13,16 +13,18 @@ function SummaryCard({
   description,
   cents,
   mascot,
+  ariaLabel,
 }: {
   title: string;
   description: string;
   cents: number;
   mascot?: string;
+  ariaLabel?: string;
 }) {
   return (
     <section
       className={`rounded-lg border border-border bg-surface p-5 ${mascot ? "relative overflow-hidden pr-28" : ""}`}
-      aria-label={`${title} no mês`}
+      aria-label={ariaLabel ?? `${title} no mês`}
     >
       <div className="relative z-10">
         <p className="text-sm text-muted-foreground">{title}</p>
@@ -70,6 +72,7 @@ export function DashboardSummaryCards({
         description="Inclui movimentações previstas."
         cents={projectedCents}
         mascot={strawberry ? STRAWBERRY_DECORATIVE_ASSETS.pupcake : undefined}
+        ariaLabel="Projeção do mês"
       />
     </div>
   );

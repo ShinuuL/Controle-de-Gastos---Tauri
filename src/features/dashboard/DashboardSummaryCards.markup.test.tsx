@@ -2,7 +2,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import { DashboardSummaryCards } from "./DashboardSummaryCards";
 
-test("places Custard in Realizado and Pupcake in Projeção only for Moranguinho", () => {
+function summaryCard(markup: string, label: string): string | undefined {
+  return markup.match(
+    new RegExp(`<section(?=[^>]*aria-label="${label}")[^>]*>.*?</section>`),
+  )?.[0];
+}
+
+test("associa exclusivamente Custard a Realizado e Pupcake a Projeção", () => {
   const markup = renderToStaticMarkup(
     <DashboardSummaryCards
       realizedCents={375_000}
@@ -11,8 +17,15 @@ test("places Custard in Realizado and Pupcake in Projeção only for Moranguinho
     />,
   );
 
-  expect(markup).toMatch(/Realizado[\s\S]*custard/);
-  expect(markup).toMatch(/Projeção[\s\S]*pupcake/);
+  const realized = summaryCard(markup, "Realizado no mês");
+  const projected = summaryCard(markup, "Projeção do mês");
+
+  expect(realized).toContain("custard");
+  expect(realized).not.toContain("pupcake");
+  expect(projected).toContain("pupcake");
+  expect(projected).not.toContain("custard");
+  expect(realized).toMatch(/<img[^>]*alt=""[^>]*aria-hidden="true"[^>]*\/>/);
+  expect(projected).toMatch(/<img[^>]*alt=""[^>]*aria-hidden="true"[^>]*\/>/);
   expect(markup).toContain("pr-28");
   expect(markup).toContain("whitespace-nowrap");
 });

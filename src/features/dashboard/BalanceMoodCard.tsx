@@ -12,11 +12,11 @@ export function BalanceMoodCard({
 
   return (
     <section
-      className="flex w-full flex-col gap-4 rounded-lg border border-border bg-surface p-5 sm:flex-row sm:items-center xl:flex-col xl:items-start transition-[opacity,transform] duration-200 motion-reduce:transition-none"
+      className="flex w-full flex-col gap-4 rounded-lg border border-border bg-surface p-5 sm:flex-row sm:items-center transition-[opacity,transform] duration-200 motion-reduce:transition-none"
       aria-labelledby="balance-mood-title"
     >
       <img
-        className="h-28 w-full object-contain sm:w-36 xl:w-full"
+        className="h-28 w-full object-contain sm:w-36"
         src={asset.src}
         alt={asset.alt}
       />

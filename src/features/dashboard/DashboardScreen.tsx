@@ -11,6 +11,7 @@ import { calculateMonthlyResult } from "../transactions/summary";
 import { formatMonthLabel } from "../../lib/date";
 import type { CategoryTotal, TransactionWithCategory } from "../../lib/types";
 import { useTheme } from "../theme/ThemeProvider";
+import { BalanceMoodCard } from "./BalanceMoodCard";
 import { DashboardSummaryCards } from "./DashboardSummaryCards";
 
 export default function DashboardScreen() {
@@ -100,10 +101,13 @@ export default function DashboardScreen() {
       )}
 
       {!error && !loading && !hasData && (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          Nenhuma movimentação em {formatMonthLabel(year, month)}. Adicione sua
-          primeira transação na aba Transações.
-        </div>
+        <>
+          {resolvedTheme === "strawberry" && <BalanceMoodCard realizedCents={0} />}
+          <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+            Nenhuma movimentação em {formatMonthLabel(year, month)}. Adicione sua
+            primeira transação na aba Transações.
+          </div>
+        </>
       )}
 
       {!error && !loading && hasData && (
