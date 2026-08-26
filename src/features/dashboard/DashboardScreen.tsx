@@ -8,17 +8,10 @@ import {
   listTransactionsByMonth,
 } from "../../lib/repositories/transactions";
 import { calculateMonthlyResult } from "../transactions/summary";
-import { formatSignedBRL } from "../../lib/currency";
 import { formatMonthLabel } from "../../lib/date";
 import type { CategoryTotal, TransactionWithCategory } from "../../lib/types";
 import { useTheme } from "../theme/ThemeProvider";
-import { BalanceMoodCard } from "./BalanceMoodCard";
-
-function signColor(cents: number): string {
-  if (cents > 0) return "text-success";
-  if (cents < 0) return "text-danger";
-  return "text-foreground";
-}
+import { DashboardSummaryCards } from "./DashboardSummaryCards";
 
 export default function DashboardScreen() {
   const { resolvedTheme } = useTheme();
@@ -91,10 +84,6 @@ export default function DashboardScreen() {
         <MonthSelector year={year} month={month} onChange={handleMonthChange} />
       </div>
 
-      {!error && !loading && resolvedTheme === "strawberry" && (
-        <BalanceMoodCard realizedCents={summary.realized_cents} />
-      )}
-
       {error && (
         <p
           role="alert"
@@ -119,36 +108,11 @@ export default function DashboardScreen() {
 
       {!error && !loading && hasData && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <section
-              className="rounded-lg border border-border bg-surface p-5"
-              aria-label="Realizado no mês"
-            >
-              <p className="text-sm text-muted-foreground">Realizado</p>
-              <p
-                className={`mt-1 text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl ${signColor(summary.realized_cents)}`}
-              >
-                {formatSignedBRL(summary.realized_cents)}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Movimentações efetivadas no mês.
-              </p>
-            </section>
-            <section
-              className="rounded-lg border border-border bg-surface p-5"
-              aria-label="Projeção do mês"
-            >
-              <p className="text-sm text-muted-foreground">Projeção</p>
-              <p
-                className={`mt-1 text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl ${signColor(summary.projected_cents)}`}
-              >
-                {formatSignedBRL(summary.projected_cents)}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Inclui movimentações previstas.
-              </p>
-            </section>
-          </div>
+          <DashboardSummaryCards
+            realizedCents={summary.realized_cents}
+            projectedCents={summary.projected_cents}
+            strawberry={resolvedTheme === "strawberry"}
+          />
 
           <section
             className="rounded-lg border border-border bg-surface p-5"
