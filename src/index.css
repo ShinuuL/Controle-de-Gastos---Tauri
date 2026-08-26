@@ -45,13 +45,13 @@
 }
 
 :root[data-theme="strawberry"] {
-  --background: #fff1f5;
-  --surface: #fffafd;
-  --foreground: #4a1623;
-  --muted-foreground: #86515d;
-  --border: rgb(177 50 79 / 0.24);
+  --background: #F2CBD1;
+  --surface: #FFFCFD;
+  --foreground: #3F1427;
+  --muted-foreground: #704458;
+  --border: #E9B6C8;
   --control-border: #b2425d;
-  --primary: #c7395c;
+  --primary: #A61E55;
   --primary-foreground: #ffffff;
   --secondary: #e87593;
   --accent: #689b53;
@@ -61,7 +61,7 @@
   --success: #5f8f4d;
   --warning: #bd6a16;
   --danger: #c7364d;
-  --ring: #c7395c;
+  --ring: #8D1748;
   color-scheme: light;
 }
 
@@ -111,11 +111,12 @@
   }
 
   :root[data-theme="strawberry"] .theme-shell::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23c7395c' stroke-width='1.5'%3E%3Cpath d='M20 24c0-5 4-9 9-9s9 4 9 9c0 11-9 18-9 18s-9-7-9-18Z'/%3E%3Cpath d='M24 16c1-4 5-6 9-4M29 15c3-3 7-2 9 1'/%3E%3C/g%3E%3C/svg%3E");
-    background-size: 72px 72px;
+    background-image: url("./assets/moranguinho/strawberry-background.avif");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
     content: "";
     inset: 0;
-    opacity: 0.08;
     pointer-events: none;
     position: absolute;
     z-index: 0;

@@ -5,6 +5,13 @@ import debt from "../../assets/moranguinho/debt.png";
 import happy from "../../assets/moranguinho/happy.png";
 import recovering from "../../assets/moranguinho/recovering.png";
 import steady from "../../assets/moranguinho/steady.png";
+import custard from "../../assets/moranguinho/custard.png";
+import pupcake from "../../assets/moranguinho/pupcake.png";
+
+export const STRAWBERRY_DECORATIVE_ASSETS = {
+  custard,
+  pupcake,
+} as const;
 
 export const STRAWBERRY_MOOD_ASSETS: Record<
   BalanceMood,
