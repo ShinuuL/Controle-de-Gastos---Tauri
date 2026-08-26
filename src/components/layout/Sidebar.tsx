@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { AppearanceSelector } from "../../features/theme/AppearanceSelector";
 import { TAB_DEFS, type TabDef, type TabId } from "./tabs";
 
 interface SidebarProps {
@@ -14,7 +15,7 @@ export default function Sidebar({ active, onSelect }: SidebarProps) {
           Controle de Gastos
         </h1>
       </div>
-      <nav className="flex flex-col gap-1 p-3" aria-label="Navegação principal">
+      <nav className="flex flex-1 flex-col gap-1 p-3" aria-label="Navegação principal">
         {TAB_DEFS.map((tab) => (
           <SidebarItem
             key={tab.id}
@@ -24,6 +25,9 @@ export default function Sidebar({ active, onSelect }: SidebarProps) {
           />
         ))}
       </nav>
+      <div className="border-t border-border p-3">
+        <AppearanceSelector />
+      </div>
     </aside>
   );
 }

@@ -10,6 +10,12 @@ Aplicativo desktop e mobile para controle financeiro pessoal, construído com Ta
 - **Gráficos:** Recharts
 - **Gerenciador de pacotes:** npm
 
+## Pré-requisitos
+
+- **Rust toolchain** — instalar via [rustup](https://rustup.rs/) (necessário para compilar o backend Tauri)
+- **Node.js 18+** — para o frontend e o npm
+- **Android Studio + SDK/NDK** — apenas para build Android (`tauri android dev/build`)
+
 ## Comandos
 
 ### Desenvolvimento
@@ -54,19 +60,21 @@ src/
 │   ├── transactions/   # Tela Movimentações + formulário + resumo
 │   └── categories/     # Tela Categorias + progresso de orçamento
 ├── components/
-│   └── layout/         # AppShell, Sidebar, BottomNav
+│   ├── layout/          # AppShell, Sidebar, BottomNav
+│   └── ui/              # Modal, ConfirmDialog, Button
 └── lib/
-    ├── repositories/   # Acesso ao banco (transactions, categories)
+    ├── repositories/   # Acesso ao banco (transactions, categories, presets, validation)
     ├── observability/  # Telemetria em memória (sem envio remoto)
     ├── types.ts        # Tipos de domínio
     ├── currency.ts     # Formatação BRL
+    ├── date.ts         # Utilitários de data
     └── db.ts           # Singleton SQLite
 
 src-tauri/
 ├── src/
 │   ├── main.rs         # Entry point Tauri
 │   ├── lib.rs          # Builder com plugin-sql + migrations
-│   └── migrations.rs   # Schema versionado (v1: tabelas, v2: triggers)
+│   └── migrations.rs   # Schema versionado (v1: tabelas, v2: triggers, v3: nature/status)
 └── capabilities/       # Permissões Tauri
 ```
 
@@ -78,3 +86,6 @@ src-tauri/
 - IDs em UUID
 - Categorias predefinidas são protegidas
 - Orçamento mensal por categoria: `null` ou centavos positivos
+- `categories` e `expenses` têm coluna `nature` (`'entrada'`/`'saida'`)
+- `expenses` têm coluna `status` (`'previsto'`/`'realizado'`)
+- O dashboard separa valores **Realizado** (`status = 'realizado'`) de **Projeção** (`status = 'previsto'`)

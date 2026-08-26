@@ -13,7 +13,6 @@ pub fn migrations() -> Vec<Migration> {
                 color          TEXT NOT NULL,
                 is_preset      INTEGER NOT NULL DEFAULT 0,
                 budget_monthly INTEGER,
-                nature         TEXT NOT NULL DEFAULT 'saida' CHECK (nature IN ('entrada', 'saida')),
                 sort_order     INTEGER NOT NULL DEFAULT 0,
                 created_at     TEXT NOT NULL
             );
@@ -24,8 +23,6 @@ pub fn migrations() -> Vec<Migration> {
                 description  TEXT NOT NULL DEFAULT '',
                 amount_cents INTEGER NOT NULL CHECK (typeof(amount_cents) = 'integer' AND amount_cents > 0),
                 date         TEXT NOT NULL,
-                nature       TEXT NOT NULL DEFAULT 'saida' CHECK (nature IN ('entrada', 'saida')),
-                status      TEXT NOT NULL DEFAULT 'realizado' CHECK (status IN ('previsto', 'realizado')),
                 created_at   TEXT NOT NULL,
                 updated_at   TEXT NOT NULL
             );
@@ -72,6 +69,32 @@ pub fn migrations() -> Vec<Migration> {
         "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "add_transaction_state_columns",
+            sql: r#"
+            ALTER TABLE categories
+            ADD COLUMN nature TEXT NOT NULL DEFAULT 'saida' CHECK (nature IN ('entrada', 'saida'));
+
+            ALTER TABLE expenses
+            ADD COLUMN nature TEXT NOT NULL DEFAULT 'saida' CHECK (nature IN ('entrada', 'saida'));
+
+            ALTER TABLE expenses
+            ADD COLUMN status TEXT NOT NULL DEFAULT 'realizado' CHECK (status IN ('previsto', 'realizado'));
+        "#,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 4,
+            description: "add_expense_import_fingerprint",
+            sql: r#"
+            ALTER TABLE expenses ADD COLUMN import_fingerprint TEXT;
+
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_expenses_import_fingerprint
+            ON expenses(import_fingerprint) WHERE import_fingerprint IS NOT NULL;
+        "#,
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -82,7 +105,7 @@ mod tests {
     #[test]
     fn migrations_enforce_positive_expense_amounts_without_rebuilding_expenses() {
         let migrations = migrations();
-        assert_eq!(migrations.len(), 2);
+        assert_eq!(migrations.len(), 4);
 
         let initial = migrations
             .iter()
@@ -93,15 +116,8 @@ mod tests {
             .contains("CHECK (typeof(amount_cents) = 'integer' AND amount_cents > 0)"));
         assert!(initial.sql.contains("idx_expenses_date"));
         assert!(initial.sql.contains("idx_expenses_category_id"));
-        assert!(initial.sql.contains(
-            "nature         TEXT NOT NULL DEFAULT 'saida' CHECK (nature IN ('entrada', 'saida'))",
-        ));
-        assert!(initial.sql.contains(
-            "nature       TEXT NOT NULL DEFAULT 'saida' CHECK (nature IN ('entrada', 'saida'))",
-        ));
-        assert!(initial.sql.contains(
-            "status      TEXT NOT NULL DEFAULT 'realizado' CHECK (status IN ('previsto', 'realizado'))",
-        ));
+        assert!(!initial.sql.contains("nature"));
+        assert!(!initial.sql.contains("status"));
 
         let hardening = migrations
             .iter()
@@ -147,5 +163,38 @@ mod tests {
         assert!(!hardening.sql.contains("DELETE FROM expenses"));
         assert!(!hardening.sql.contains("UPDATE expenses"));
         assert!(!hardening.sql.contains("INSERT INTO expenses"));
+
+        let transaction_state = migrations
+            .iter()
+            .find(|migration| migration.version == 3)
+            .expect("version 3 migration");
+        assert!(transaction_state
+            .sql
+            .contains("ALTER TABLE categories"));
+        assert!(transaction_state
+            .sql
+            .contains("ADD COLUMN nature TEXT NOT NULL DEFAULT 'saida' CHECK (nature IN ('entrada', 'saida'))"));
+        assert!(transaction_state
+            .sql
+            .contains("ALTER TABLE expenses"));
+        assert!(transaction_state
+            .sql
+            .contains("ADD COLUMN status TEXT NOT NULL DEFAULT 'realizado' CHECK (status IN ('previsto', 'realizado'))"));
+        assert!(!transaction_state.sql.contains("DROP TABLE"));
+        assert!(!transaction_state.sql.contains("DELETE FROM"));
+
+        let import_fingerprint = migrations
+            .iter()
+            .find(|migration| migration.version == 4)
+            .expect("version 4 migration");
+        assert!(import_fingerprint
+            .sql
+            .contains("ALTER TABLE expenses ADD COLUMN import_fingerprint TEXT"));
+        assert!(import_fingerprint
+            .sql
+            .contains("CREATE UNIQUE INDEX IF NOT EXISTS idx_expenses_import_fingerprint"));
+        assert!(import_fingerprint
+            .sql
+            .contains("ON expenses(import_fingerprint) WHERE import_fingerprint IS NOT NULL"));
     }
 }

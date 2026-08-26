@@ -1,3 +1,4 @@
+mod imports;
 mod migrations;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -8,6 +9,7 @@ pub fn run() {
                 .add_migrations("sqlite:controle-de-gastos.db", migrations::migrations())
                 .build(),
         )
+        .invoke_handler(tauri::generate_handler![imports::confirm_statement_import])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

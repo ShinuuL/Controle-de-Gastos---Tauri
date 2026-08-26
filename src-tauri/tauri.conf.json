@@ -1,8 +1,13 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "controle-de-gastos",
-  "version": "0.1.0",
+  "version": "0.2.5",
   "identifier": "com.controle-gastos.app",
+  "plugins": {
+    "sql": {
+      "preload": ["sqlite:controle-de-gastos.db"]
+    }
+  },
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",

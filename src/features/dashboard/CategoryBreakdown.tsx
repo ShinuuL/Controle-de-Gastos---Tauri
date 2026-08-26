@@ -1,11 +1,15 @@
 import type { CategoryTotal } from "../../lib/types";
 import { formatSignedBRL } from "../../lib/currency";
+import CategoryMarker from "../../components/ui/CategoryMarker";
+import { useTheme } from "../theme/ThemeProvider";
 
 interface CategoryBreakdownProps {
   totals: CategoryTotal[];
 }
 
 export default function CategoryBreakdown({ totals }: CategoryBreakdownProps) {
+  const { resolvedTheme } = useTheme();
+
   if (totals.length === 0) return null;
 
   const grandTotalAbs = totals.reduce(
@@ -32,10 +36,9 @@ export default function CategoryBreakdown({ totals }: CategoryBreakdownProps) {
         {totals.map((t) => (
           <tr key={t.category_id}>
             <td className="flex items-center gap-2 py-2 pr-3">
-              <span
-                className="inline-block size-3 shrink-0 rounded-full"
-                style={{ backgroundColor: t.category_color }}
-                aria-hidden
+              <CategoryMarker
+                color={t.category_color}
+                strawberry={resolvedTheme === "strawberry"}
               />
               {t.category_name}
             </td>

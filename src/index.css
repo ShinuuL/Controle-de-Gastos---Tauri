@@ -1,12 +1,14 @@
 @import "tailwindcss";
 @import "@fontsource-variable/inter";
 
-:root {
+:root,
+:root[data-theme="light"] {
   --background: #ffffff;
   --surface: #f8fafc;
   --foreground: #0f172a;
   --muted-foreground: #475569;
   --border: rgb(15 23 42 / 0.12);
+  --control-border: #64748b;
   --primary: #1d4ed8;
   --primary-foreground: #ffffff;
   --secondary: #3b82f6;
@@ -21,26 +23,46 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --surface: #101a34;
-    --foreground: #f8fafc;
-    --muted-foreground: #94a3b8;
-    --border: rgb(255 255 255 / 0.08);
-    --primary: #2563eb;
-    --primary-foreground: #ffffff;
-    --secondary: #60a5fa;
-    --accent: #059669;
-    --accent-foreground: #ffffff;
-    --destructive: #ef4444;
-    --destructive-foreground: #ffffff;
-    --success: #34d399;
-    --warning: #fbbf24;
-    --danger: #f87171;
-    --ring: #2563eb;
-    color-scheme: dark;
-  }
+:root[data-theme="dark"] {
+  --background: #0f172a;
+  --surface: #101a34;
+  --foreground: #f8fafc;
+  --muted-foreground: #94a3b8;
+  --border: rgb(255 255 255 / 0.08);
+  --control-border: #94a3b8;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #60a5fa;
+  --accent: #059669;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --ring: #2563eb;
+  color-scheme: dark;
+}
+
+:root[data-theme="strawberry"] {
+  --background: #F2CBD1;
+  --surface: #FFFCFD;
+  --foreground: #3F1427;
+  --muted-foreground: #704458;
+  --border: #E9B6C8;
+  --control-border: #b2425d;
+  --primary: #A61E55;
+  --primary-foreground: #ffffff;
+  --secondary: #e87593;
+  --accent: #689b53;
+  --accent-foreground: #ffffff;
+  --destructive: #b4233d;
+  --destructive-foreground: #ffffff;
+  --success: #5f8f4d;
+  --warning: #bd6a16;
+  --danger: #c7364d;
+  --ring: #8D1748;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -49,6 +71,7 @@
   --color-foreground: var(--foreground);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-control-border: var(--control-border);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -80,6 +103,28 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  .theme-shell {
+    isolation: isolate;
+    position: relative;
+  }
+
+  :root[data-theme="strawberry"] .theme-shell::before {
+    background-image: url("./assets/moranguinho/strawberry-background.avif");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 0;
+  }
+
+  .theme-shell > * {
+    position: relative;
+    z-index: 1;
   }
 
   ::selection {

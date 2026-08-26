@@ -18,7 +18,9 @@ dist-ssr
 *.p12
 *.pfx
 .opencode/
+.worktrees/
 *.jks
+.release-signing/
 src-tauri/gen/android/keystore.properties
 *.db
 *.sqlite

@@ -20,6 +20,8 @@ const METRIC_OPERATIONS = new Set([
   "transaction.delete",
   "transaction.monthlyTotal",
   "transaction.monthlyTotalsByCategory",
+  "statementImport.findCandidates",
+  "statementImport.confirm",
 ]);
 
 type Metric = { count: number; durationMs: number };

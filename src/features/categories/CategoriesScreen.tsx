@@ -13,6 +13,8 @@ import {
 } from "../../lib/repositories/categories";
 import type { CategoryBudgetProgress } from "../../lib/types";
 import { getCategoryBudgetProgress } from "./budget";
+import CategoryMarker from "../../components/ui/CategoryMarker";
+import { useTheme } from "../theme/ThemeProvider";
 
 const colors = [
   "#F59E0B",
@@ -33,6 +35,7 @@ type FormState =
   | null;
 
 export default function CategoriesScreen() {
+  const { resolvedTheme } = useTheme();
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
@@ -146,6 +149,7 @@ export default function CategoriesScreen() {
             <CategoryCard
               key={category.id}
               category={category}
+              strawberry={resolvedTheme === "strawberry"}
               onEditBudget={() => setFormState({ mode: "budget", category })}
               onDelete={() => setDeleteTarget(category)}
             />
@@ -190,10 +194,12 @@ export default function CategoriesScreen() {
 
 function CategoryCard({
   category,
+  strawberry,
   onEditBudget,
   onDelete,
 }: {
   category: CategoryBudgetProgress;
+  strawberry: boolean;
   onEditBudget: () => void;
   onDelete: () => void;
 }) {
@@ -214,11 +220,7 @@ function CategoryCard({
         <div className="flex min-w-0 items-center gap-3">
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
-              <span
-                className="size-3 shrink-0 rounded-full"
-                style={{ backgroundColor: category.color }}
-                aria-hidden
-              />
+              <CategoryMarker color={category.color} strawberry={strawberry} />
               <h3 className="truncate font-medium">{category.name}</h3>
             </div>
             <p className="text-sm text-muted-foreground">{detail}</p>

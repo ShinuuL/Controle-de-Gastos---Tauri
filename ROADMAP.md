@@ -34,9 +34,19 @@ Itens:
 - **ExpensesScreen:** descontinuar (ou redirecionar para `TransactionsScreen`). Atualmente filtra `nature = 'saida' AND status = 'realizado'` — comportamento já coberto pela tela de Movimentações.
 - **Documentar decisões de produto** no `MEMORY.md` ou `NOTES.md` conforme tomadas.
 
-### Fase 10 — Integrações financeiras (futuro, não iniciado)
+### Fase 10 — Importação e conciliação de extratos (planejada)
 
-Roadmap de integrações externas (bancos, Open Finance, etc.). Sem artefato versionado ainda — registrar como pendente e explorar conforme prioridade do produto.
+Importação manual, local e revisável de extratos bancários, em substituição ao escopo inicial de integrações externas (Open Finance e carteira digital).
+
+Primeiro recorte aprovado:
+- Extrato de conta-corrente Itaú em CSV, processado somente no dispositivo.
+- Prévia para revisar natureza e categoria de entradas e saídas antes de gravar.
+- Deduplicação determinística e sinalização de conflitos parecidos para decisão manual.
+- Criação de categoria somente se o arquivo a fornecer e o usuário mantiver a sugestão.
+
+Fora deste recorte: cartão de crédito, OFX, PDF/XLS, outros bancos e categorização automática a partir do histórico.
+
+Design aprovado: `docs/superpowers/specs/2026-08-24-importacao-csv-itau-design.md`.
 
 ### Fase 11 — Nuvem (futuro, não iniciado)
 

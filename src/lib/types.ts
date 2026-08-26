@@ -51,6 +51,17 @@ export interface TransactionWithCategory extends Transaction {
 
 export interface UpdateTransactionInput extends Partial<CreateTransactionInput> {}
 
+export interface ApprovedImportLine
+  extends Omit<CreateTransactionInput, "status"> {
+  fingerprint: string;
+  /** Nome explicitamente fornecido no CSV para uma categoria ainda inexistente. */
+  createCategoryName?: string;
+}
+
+export interface ImportResult {
+  imported: number;
+}
+
 export interface CategoryTotal {
   category_id: string;
   category_name: string;
