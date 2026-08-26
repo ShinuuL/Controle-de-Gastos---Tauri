@@ -8,6 +8,7 @@ import {
   prepareImportPreview,
   readImportFileBytes,
   transitionImportState,
+  validateImportFileType,
   validateImportFileSize,
   validateImportReviewSize,
 } from "./importController";
@@ -221,6 +222,23 @@ describe("controlador da importação na tela de movimentações", () => {
     expect(validateImportFileSize(MAX_IMPORT_FILE_BYTES + 1)).toBe(
       "Arquivo CSV excede o limite de 5 MiB.",
     );
+  });
+
+  it("recusa PDF antes de tentar preparar a prévia CSV", () => {
+    expect(
+      validateImportFileType({
+        name: "extrato-itau.pdf",
+        type: "application/pdf",
+      }),
+    ).toBe(
+      "A leitura automática de PDF ainda não é suportada. Exporte o extrato do Itaú em CSV para importar.",
+    );
+  });
+
+  it("mantém arquivos CSV elegíveis para a prévia", () => {
+    expect(
+      validateImportFileType({ name: "extrato-itau.csv", type: "text/csv" }),
+    ).toBeNull();
   });
 
   it("não chama arrayBuffer quando o arquivo já excede 5 MiB", async () => {

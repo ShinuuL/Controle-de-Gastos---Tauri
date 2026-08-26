@@ -14,3 +14,16 @@ test("renders a colored strawberry only for the strawberry theme", () => {
   expect(berry).toContain("#ff9815");
   expect(dot).toContain('data-category-marker="dot"');
 });
+
+test("makes only the strawberry marker three pixels larger", () => {
+  const berry = renderToStaticMarkup(
+    <CategoryMarker color="#ff9815" strawberry />,
+  );
+  const dot = renderToStaticMarkup(
+    <CategoryMarker color="#ff9815" strawberry={false} />,
+  );
+
+  expect(berry).toContain("size-[15px]");
+  expect(dot).toContain("size-3");
+  expect(dot).not.toContain("size-[15px]");
+});

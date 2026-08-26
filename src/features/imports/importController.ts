@@ -204,6 +204,18 @@ export function validateImportFileSize(size: number): string | null {
     : null;
 }
 
+export function validateImportFileType(file: {
+  name: string;
+  type: string;
+}): string | null {
+  const isPdf =
+    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
+  return isPdf
+    ? "A leitura automática de PDF ainda não é suportada. Exporte o extrato do Itaú em CSV para importar."
+    : null;
+}
+
 export function validateImportReviewSize(rowCount: number): string | null {
   return rowCount > MAX_IMPORT_REVIEW_ROWS
     ? `Este arquivo tem mais de ${MAX_IMPORT_REVIEW_ROWS} linhas. Exporte um período menor para revisar a importação.`

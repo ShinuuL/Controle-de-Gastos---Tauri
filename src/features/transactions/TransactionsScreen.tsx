@@ -15,6 +15,7 @@ import {
   confirmImportPreview,
   prepareImportPreview,
   readImportFileBytes,
+  validateImportFileType,
   validateImportFileSize,
   type ImportState,
 } from "../imports/importController";
@@ -145,6 +146,12 @@ export default function TransactionsScreen() {
     event.currentTarget.value = "";
     if (!file) return;
 
+    const fileTypeError = validateImportFileType(file);
+    if (fileTypeError) {
+      setImportState({ kind: "error", message: fileTypeError });
+      return;
+    }
+
     const fileSizeError = validateImportFileSize(file.size);
     if (fileSizeError) {
       setImportState({ kind: "error", message: fileSizeError });
@@ -222,9 +229,9 @@ export default function TransactionsScreen() {
           <input
             ref={importInputRef}
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,text/csv,.pdf,application/pdf"
             className="hidden"
-            aria-label="Selecionar extrato CSV do Itaú"
+            aria-label="Selecionar extrato CSV ou PDF do Itaú"
             onChange={(event) => void handleImportFile(event)}
           />
           <Button

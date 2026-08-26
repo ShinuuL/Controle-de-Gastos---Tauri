@@ -25,7 +25,7 @@ export default function CategoryMarker({
   return (
     <svg
       data-category-marker="berry"
-      className={`${sizeClass} shrink-0`}
+      className={`${size === "compact" ? "size-[11px]" : "size-[15px]"} shrink-0`}
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
