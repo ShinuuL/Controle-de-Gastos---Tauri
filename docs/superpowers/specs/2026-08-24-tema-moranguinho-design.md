@@ -1,7 +1,7 @@
 # Tema Moranguinho — Especificação de Design
 
-**Data:** 2026-08-24  
-**Branch:** `feat/moranguinho-theme`  
+**Data:** 2026-08-24
+**Branch:** `feat/moranguinho-theme`
 **Status:** aprovado para implementação.
 
 ## Objetivo

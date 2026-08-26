@@ -44,7 +44,7 @@ expect(resolveTheme("strawberry", false)).toBe("strawberry");
 
 - [ ] **Step 2: Run RED**
 
-Run: `npm.cmd test -- src/features/theme/themePreference.test.ts`  
+Run: `npm.cmd test -- src/features/theme/themePreference.test.ts`
 Expected: FAIL because the module does not exist.
 
 - [ ] **Step 3: Implement the minimal contract**
@@ -60,7 +60,7 @@ Validate with a readonly tuple; wrap `Storage` operations in `try/catch`.
 
 - [ ] **Step 4: Run GREEN and commit**
 
-Run: `npm.cmd test -- src/features/theme/themePreference.test.ts`  
+Run: `npm.cmd test -- src/features/theme/themePreference.test.ts`
 Expected: PASS.
 
 ```bash
@@ -90,7 +90,7 @@ it.each([[-1,"debt"],[0,"alert"],[4_999,"alert"],[5_000,"recovering"],[15_000,"r
 
 - [ ] **Step 2: Run RED**
 
-Run: `npm.cmd test -- src/features/dashboard/balanceMood.test.ts`  
+Run: `npm.cmd test -- src/features/dashboard/balanceMood.test.ts`
 Expected: FAIL because `balanceMoodFor` is absent.
 
 - [ ] **Step 3: Implement and name assets semantically**
@@ -99,7 +99,7 @@ Extract `image8,image7,image3,image6,image4,image11` from `CONFIGURAÇÕES` in t
 
 - [ ] **Step 4: Run GREEN and commit**
 
-Run: `npm.cmd test -- src/features/dashboard/balanceMood.test.ts`  
+Run: `npm.cmd test -- src/features/dashboard/balanceMood.test.ts`
 Expected: PASS for all boundaries.
 
 ```bash
@@ -128,7 +128,7 @@ for (const label of ["Padrão do sistema", "Claro", "Escuro", "Moranguinho"]) ex
 
 - [ ] **Step 2: Run RED**
 
-Run: `npm.cmd test -- src/features/theme/AppearanceSelector.markup.test.tsx`  
+Run: `npm.cmd test -- src/features/theme/AppearanceSelector.markup.test.tsx`
 Expected: FAIL because the component does not exist.
 
 - [ ] **Step 3: Implement**
@@ -137,10 +137,10 @@ Expected: FAIL because the component does not exist.
 
 - [ ] **Step 4: Run GREEN and commit**
 
-Run: `npm.cmd test -- src/features/theme/themePreference.test.ts src/features/theme/AppearanceSelector.markup.test.tsx`  
+Run: `npm.cmd test -- src/features/theme/themePreference.test.ts src/features/theme/AppearanceSelector.markup.test.tsx`
 Expected: PASS.
 
-Run: `npm.cmd run typecheck`  
+Run: `npm.cmd run typecheck`
 Expected: exit code 0.
 
 ```bash
@@ -169,7 +169,7 @@ expect(markup).toContain("saldo negativo");
 
 - [ ] **Step 2: Run RED**
 
-Run: `npm.cmd test -- src/features/dashboard/BalanceMoodCard.markup.test.tsx`  
+Run: `npm.cmd test -- src/features/dashboard/BalanceMoodCard.markup.test.tsx`
 Expected: FAIL because the card does not exist.
 
 - [ ] **Step 3: Implement**
@@ -178,7 +178,7 @@ Render section, BRL value via `formatSignedBRL`, alt e mensagem do manifesto. Mo
 
 - [ ] **Step 4: Run GREEN and commit**
 
-Run: `npm.cmd test -- src/features/dashboard/balanceMood.test.ts src/features/dashboard/BalanceMoodCard.markup.test.tsx`  
+Run: `npm.cmd test -- src/features/dashboard/balanceMood.test.ts src/features/dashboard/BalanceMoodCard.markup.test.tsx`
 Expected: PASS.
 
 ```bash
@@ -193,7 +193,7 @@ git commit -m "feat: mostrar reacao no resumo"
 
 - [ ] **Step 1: Execute regressões**
 
-Run: `npm.cmd test`, `npm.cmd run lint`, `npm.cmd run build`, `git diff --check`.  
+Run: `npm.cmd test`, `npm.cmd run lint`, `npm.cmd run build`, `git diff --check`.
 Expected: todos os comandos concluem sem erro.
 
 - [ ] **Step 2: Valide visualmente**

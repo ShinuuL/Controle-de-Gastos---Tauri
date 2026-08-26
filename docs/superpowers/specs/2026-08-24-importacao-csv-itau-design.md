@@ -1,6 +1,6 @@
 # Design — Importação e conciliação de extrato CSV Itaú
 
-**Data:** 2026-08-24  
+**Data:** 2026-08-24
 **Status:** Aprovado para planejamento
 
 ## Objetivo

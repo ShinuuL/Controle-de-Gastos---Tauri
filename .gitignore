@@ -20,6 +20,7 @@ dist-ssr
 .opencode/
 .worktrees/
 *.jks
+.release-signing/
 src-tauri/gen/android/keystore.properties
 *.db
 *.sqlite
