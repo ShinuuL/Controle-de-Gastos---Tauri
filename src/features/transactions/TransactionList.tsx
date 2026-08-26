@@ -3,6 +3,8 @@ import { formatSignedBRL } from "../../lib/currency";
 import { formatDateBR } from "../../lib/date";
 import { getTransactionStatusPresentation } from "./status";
 import type { TransactionWithCategory } from "../../lib/types";
+import CategoryMarker from "../../components/ui/CategoryMarker";
+import { useTheme } from "../theme/ThemeProvider";
 
 interface TransactionListProps {
   transactions: TransactionWithCategory[];
@@ -15,6 +17,8 @@ export default function TransactionList({
   onEdit,
   onDelete,
 }: TransactionListProps) {
+  const { resolvedTheme } = useTheme();
+
   return (
     <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
       {transactions.map((transaction) => {
@@ -35,10 +39,10 @@ export default function TransactionList({
                 )}
               </p>
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span
-                  className="size-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: transaction.category_color }}
-                  aria-hidden
+                <CategoryMarker
+                  color={transaction.category_color}
+                  strawberry={resolvedTheme === "strawberry"}
+                  size="compact"
                 />
                 <span className="min-w-0 truncate">
                   {transaction.category_name}
