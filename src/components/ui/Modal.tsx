@@ -32,7 +32,7 @@ export default function Modal({ open, onClose, title, children }: ModalProps) {
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -42,11 +42,11 @@ export default function Modal({ open, onClose, title, children }: ModalProps) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-title"
-            className="w-full max-w-md rounded-t-xl border border-border bg-surface p-5 shadow-2xl sm:rounded-xl"
-            initial={{ y: 32, opacity: 0 }}
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-2xl"
+            initial={{ y: 16, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
-            exit={{ y: 24, opacity: 0 }}
+            exit={{ y: 16, opacity: 0 }}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">

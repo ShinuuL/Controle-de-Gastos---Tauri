@@ -7,8 +7,8 @@ import {
 } from "./themePreference";
 
 describe("theme preference", () => {
-  test("falls back to system for an invalid stored preference", () => {
-    expect(readThemePreference({ getItem: () => "invalid" })).toBe("system");
+  test("falls back to light for an invalid stored preference", () => {
+    expect(readThemePreference({ getItem: () => "invalid" })).toBe("light");
   });
 
   test("reads a valid stored preference", () => {
@@ -31,16 +31,13 @@ describe("theme preference", () => {
   });
 
   test("does not throw when storage is unavailable", () => {
-    expect(readThemePreference({ getItem: () => { throw new Error("blocked"); } })).toBe("system");
+    expect(readThemePreference({ getItem: () => { throw new Error("blocked"); } })).toBe("light");
     expect(() => writeThemePreference("light", { setItem: () => { throw new Error("blocked"); } })).not.toThrow();
   });
 
-  test("resolves system preference from the operating system", () => {
-    expect(resolveTheme("system", true)).toBe("dark");
-    expect(resolveTheme("system", false)).toBe("light");
-    expect(resolveTheme("light", true)).toBe("light");
-    expect(resolveTheme("dark", true)).toBe("dark");
-    expect(resolveTheme("dark", false)).toBe("dark");
-    expect(resolveTheme("strawberry", false)).toBe("strawberry");
+  test("uses the explicitly selected theme", () => {
+    expect(resolveTheme("light")).toBe("light");
+    expect(resolveTheme("dark")).toBe("dark");
+    expect(resolveTheme("strawberry")).toBe("strawberry");
   });
 });

@@ -1,9 +1,9 @@
 export const THEME_STORAGE_KEY = "controle-gastos.theme-preference";
 
-const THEME_PREFERENCES = ["system", "light", "dark", "strawberry"] as const;
+const THEME_PREFERENCES = ["light", "dark", "strawberry"] as const;
 
 export type ThemePreference = (typeof THEME_PREFERENCES)[number];
-export type ResolvedTheme = Exclude<ThemePreference, "system">;
+export type ResolvedTheme = ThemePreference;
 
 type ThemeStorageReader = Pick<Storage, "getItem">;
 type ThemeStorageWriter = Pick<Storage, "setItem">;
@@ -15,9 +15,9 @@ function isThemePreference(value: string | null): value is ThemePreference {
 export function readThemePreference(storage: ThemeStorageReader): ThemePreference {
   try {
     const storedPreference = storage.getItem(THEME_STORAGE_KEY);
-    return isThemePreference(storedPreference) ? storedPreference : "system";
+    return isThemePreference(storedPreference) ? storedPreference : "light";
   } catch {
-    return "system";
+    return "light";
   }
 }
 
@@ -34,11 +34,6 @@ export function writeThemePreference(
 
 export function resolveTheme(
   preference: ThemePreference,
-  systemPrefersDark: boolean,
 ): ResolvedTheme {
-  return preference === "system"
-    ? systemPrefersDark
-      ? "dark"
-      : "light"
-    : preference;
+  return preference;
 }

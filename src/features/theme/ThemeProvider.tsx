@@ -21,7 +21,7 @@ interface ThemeContextValue {
 }
 
 const fallbackTheme: ThemeContextValue = {
-  preference: "system",
+  preference: "light",
   resolvedTheme: "light",
   setPreference: () => undefined,
 };
@@ -36,36 +36,15 @@ function storageOrNull(): Storage | null {
   }
 }
 
-function systemPrefersDark(): boolean {
-  return typeof window !== "undefined" && window.matchMedia
-    ? window.matchMedia("(prefers-color-scheme: dark)").matches
-    : false;
-}
-
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setStoredPreference] = useState<ThemePreference>(() =>
     readThemePreference(storageOrNull() ?? { getItem: () => null }),
   );
-  const [prefersDark, setPrefersDark] = useState(systemPrefersDark);
-
-  const resolvedTheme = resolveTheme(preference, prefersDark);
+  const resolvedTheme = resolveTheme(preference);
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;
   }, [resolvedTheme]);
-
-  useEffect(() => {
-    if (preference !== "system" || !window.matchMedia) return;
-
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = (event: MediaQueryListEvent) => {
-      setPrefersDark(event.matches);
-    };
-
-    setPrefersDark(mediaQuery.matches);
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
-  }, [preference]);
 
   const value = useMemo<ThemeContextValue>(
     () => ({
