@@ -1,0 +1,16 @@
+# Configuracao de deploy deste projeto (deploy-base)
+[deploy]
+app         = "controle-de-gastos"   # id do app: minusculas, sem espacos
+repo        = "ShinuuL/releases"     # repo privado que guarda as releases -- CONFIRMAR
+gateway     = "https://updates.exemplo.com.br"  # URL publica do Worker -- PREENCHER
+channel     = "stable"               # stable | beta
+private_key = 'C:/chaves/deploy-base.pem'       # PEM de assinatura -- FORA do repo
+public_key  = "PREENCHA_COM_deploy-base_keygen" # hex, embutido no cliente e no portal
+
+# APK Android universal, gerado por `npx tauri android build --apk`.
+# O publish versiona o nome do arquivo automaticamente (app-universal-release-0.2.7.apk).
+[[artifact]]
+path     = "src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk"
+platform = "android"
+arch     = "universal"
+kind     = "apk"
