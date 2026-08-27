@@ -122,6 +122,20 @@
     z-index: 0;
   }
 
+  /* Mobile (Android): arte retrato 675x1200, largura 100% com altura "auto",
+     entao a proporcao e preservada e nao ha stretch/crop como no "cover".
+     675px e maior que a largura CSS de qualquer celular, logo a imagem so
+     e reduzida, nunca ampliada -- e o que evita a quebra de resolucao.
+     O repeat-y faz cada tela de rolagem exibir um fundo identico. */
+  @media (max-width: 767px) {
+    :root[data-theme="strawberry"] .theme-shell::before {
+      background-image: url("./assets/moranguinho/Fundo-Mobile.jpeg");
+      background-position: top center;
+      background-repeat: repeat-y;
+      background-size: 100% auto;
+    }
+  }
+
   .theme-shell > * {
     position: relative;
     z-index: 1;

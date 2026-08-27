@@ -65,11 +65,15 @@ export default function DashboardScreen() {
 
   const summary = calculateMonthlyResult(transactions);
 
-  const chartTotals = totals.map((t) => ({
-    ...t,
-    total_cents: Math.abs(t.total_cents),
-  }));
-  const slices = buildChartSlices(chartTotals);
+  const expenseTotals = totals
+    .filter((t) => t.total_cents < 0)
+    .map((t) => ({ ...t, total_cents: Math.abs(t.total_cents) }))
+    .sort((a, b) => b.total_cents - a.total_cents);
+  const slices = buildChartSlices(expenseTotals);
+  const expensesTotalCents = expenseTotals.reduce(
+    (acc, t) => acc + t.total_cents,
+    0,
+  );
 
   const hasData = transactions.length > 0;
 
@@ -123,12 +127,9 @@ export default function DashboardScreen() {
             aria-labelledby="chart-title"
           >
             <h3 id="chart-title" className="mb-4 text-sm font-medium">
-              Movimentações por categoria
+              Saídas por categoria
             </h3>
-            <ExpensePieChart
-              slices={slices}
-              totalCents={summary.projected_cents}
-            />
+            <ExpensePieChart slices={slices} totalCents={expensesTotalCents} />
           </section>
 
           <section
