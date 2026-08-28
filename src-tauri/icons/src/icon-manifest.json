@@ -1,0 +1,6 @@
+{
+  "default": "contr0l-icon.svg",
+  "bg_color": "#0f172a",
+  "android_fg": "contr0l-icon-fg.svg",
+  "android_fg_scale": 85
+}
