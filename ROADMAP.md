@@ -124,14 +124,17 @@ a fase 17.
 
 ### Pendências imediatas (para retomar em nova sessão)
 
-Ordem sugerida. Os dois primeiros itens destravam a release; o resto é a venda.
+Ordem sugerida. Os dois primeiros itens já foram entregues; o que resta é a venda.
 
 **1. ~~Arte do totalizador de entradas~~** — concluída em 2026-08-28. O JPEG
 entregue tinha fundo preto gravado; o recorte preservou os contornos do desenho
 e a arte foi reduzida a 600px (293 KB).
 
-**2. Publicar a 0.3.0** — o APK já está compilado e assinado em
-`dist-android/contr0l.apk`:
+**2. ~~Publicar a 0.3.0~~** — publicada em 2026-08-28:
+https://github.com/ShinuuL/Releases/releases/tag/contr0l-v0.3.0
+
+Verificado no gateway: manifesto assinado válido, e o binário baixado pelo
+gateway é byte a byte idêntico ao compilado localmente.
 
 | | |
 |---|---|
@@ -139,15 +142,7 @@ e a arte foi reduzida a 600px (293 KB).
 | sha256 | `55550123a24df68a8e764901d99c4788c92bd7fad9b92a9833fcd85ce82949be` |
 | Tamanho | 70.977.009 bytes |
 
-Falta apenas publicar:
 
-```
-cd ../../deploy-base
-.\.venv\Scripts\python.exe -m deploybase.cli publish 0.3.0 --dry-run --config "<caminho>/deploy.toml"
-```
-
-Conferir o dry-run (sha256 acima, `contr0l-0.3.0.apk`, assinatura) e repetir sem
-`--dry-run`.
 
 **3. QR PIX e formulário na página** — é o que falta para religar o bloqueio com
 sentido. Hoje `PAID_APPS` está vazio de propósito (ver fase 13).
