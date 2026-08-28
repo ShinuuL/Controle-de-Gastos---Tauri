@@ -130,17 +130,26 @@ Ordem sugerida. Os dois primeiros itens já foram entregues; o que resta é a ve
 entregue tinha fundo preto gravado; o recorte preservou os contornos do desenho
 e a arte foi reduzida a 600px (293 KB).
 
-**2. ~~Publicar a 0.3.0~~** — publicada em 2026-08-28:
-https://github.com/ShinuuL/Releases/releases/tag/contr0l-v0.3.0
+**2. ~~Publicar a 0.4.0~~** — publicada em 2026-08-28:
+https://github.com/ShinuuL/Releases/releases/tag/contr0l-v0.4.0
 
-Verificado no gateway: manifesto assinado válido, e o binário baixado pelo
-gateway é byte a byte idêntico ao compilado localmente.
+Verificado no gateway: manifesto assinado válido para a chave pública do
+`deploy.toml`, e o binário baixado pelo gateway é byte a byte idêntico ao
+compilado localmente.
 
 | | |
 |---|---|
-| versionName / Code | 0.3.0 / 3000 |
-| sha256 | `55550123a24df68a8e764901d99c4788c92bd7fad9b92a9833fcd85ce82949be` |
-| Tamanho | 70.977.009 bytes |
+| versionName / Code | 0.4.0 / 4000 |
+| sha256 | `b5d0bde085bc00f79e7a5360720aaf0412e7b459702c363c0c61202f2412a51f` |
+| Tamanho | 72.809.001 bytes |
+
+O ganho de ~1,8 MB sobre a 0.3.0 é o pdf.js, que entra em chunk próprio e só é
+carregado quando o usuário importa um PDF.
+
+Nesta versão: importação de extrato em PDF, correção do parser de CSV para o
+formato que o app do Itaú realmente exporta, ações em massa na revisão da
+importação, e o totalizador de entradas passando a contar só o que já foi
+efetivado (com previstas virando realizadas na data).
 
 
 
