@@ -27,6 +27,7 @@ import {
   createTransaction,
   deleteTransaction,
   listTransactionsByMonth,
+  settleDueTransactions,
   updateTransaction,
 } from "../../lib/repositories/transactions";
 import { listCategories } from "../../lib/repositories/categories";
@@ -78,6 +79,7 @@ export default function TransactionsScreen() {
     setLoading(true);
     setError(null);
     try {
+      await settleDueTransactions();
       setTransactions(await listTransactionsByMonth(nextYear, nextMonth));
     } catch (err) {
       setError(

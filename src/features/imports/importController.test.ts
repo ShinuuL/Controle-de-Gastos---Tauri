@@ -220,19 +220,23 @@ describe("controlador da importação na tela de movimentações", () => {
   it("recusa arquivo acima de 5 MiB antes da leitura", () => {
     expect(validateImportFileSize(MAX_IMPORT_FILE_BYTES)).toBeNull();
     expect(validateImportFileSize(MAX_IMPORT_FILE_BYTES + 1)).toBe(
-      "Arquivo CSV excede o limite de 5 MiB.",
+      "Arquivo excede o limite de 5 MiB.",
     );
   });
 
-  it("recusa PDF antes de tentar preparar a prévia CSV", () => {
+  it("aceita PDF do Itaú para a prévia", () => {
     expect(
       validateImportFileType({
         name: "extrato-itau.pdf",
         type: "application/pdf",
       }),
-    ).toBe(
-      "A leitura automática de PDF ainda não é suportada. Exporte o extrato do Itaú em CSV para importar.",
-    );
+    ).toBeNull();
+  });
+
+  it("recusa formatos que não são extrato do Itaú", () => {
+    expect(
+      validateImportFileType({ name: "extrato.ofx", type: "application/x-ofx" }),
+    ).toBe("Formato não suportado. Importe o extrato do Itaú em CSV ou PDF.");
   });
 
   it("mantém arquivos CSV elegíveis para a prévia", () => {
@@ -252,7 +256,7 @@ describe("controlador da importação na tela de movimentações", () => {
     };
 
     await expect(readImportFileBytes(file)).rejects.toThrow(
-      "Arquivo CSV excede o limite de 5 MiB.",
+      "Arquivo excede o limite de 5 MiB.",
     );
     expect(readCount).toBe(0);
   });

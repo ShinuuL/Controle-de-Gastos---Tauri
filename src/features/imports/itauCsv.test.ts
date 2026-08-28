@@ -77,7 +77,7 @@ describe("parseItauCsv", () => {
 
   it("rejeita arquivo vazio, cabeçalho ausente e formato não suportado", () => {
     expect(() => parseItauCsv(utf8("  \r\n"))).toThrow("Arquivo CSV vazio");
-    expect(() => parseItauCsv(utf8("Data;Histórico;Valor\n01/01/2026;X;1,00"))).toThrow(/cabeçalho/i);
+    expect(() => parseItauCsv(utf8("Data;Histórico\n01/01/2026;X"))).toThrow(/cabeçalho/i);
     expect(() => parseItauCsv(utf8("isso não é um CSV"))).toThrow(/formato/i);
   });
 
@@ -85,5 +85,55 @@ describe("parseItauCsv", () => {
     expect(() => parseItauCsv(new Uint8Array(5 * 1024 * 1024 + 1).buffer)).toThrow(/5 MiB/i);
     const rows = Array.from({ length: 10001 }, (_, index) => `01/01/2026;Linha ${index};1,00;C`);
     expect(() => parseItauCsv(utf8(`Data;Histórico;Valor;Tipo\n${rows.join("\n")}`))).toThrow(/10\.000/i);
+  });
+});
+
+describe("parseItauCsv com o extrato exportado pelo app do Itaú", () => {
+  // Cabeçalho e linhas reproduzidos de extrato/itau_extrato_072026.csv.
+  const appCsv = [
+    "data;lancamentos;valor (R$);saldo (R$)",
+    "27/08/2026;SALDO DO DIA;;-49,71",
+    "26/08/2026;PAY ATACA 26/08;-8,45;",
+    "20/08/2026;SISPAG PIX MASTERSYS GESTAO ...;120,00;",
+    "07/08/2026;PIX TRANSF MASTERS07/08;1.525,42;",
+    "04/08/2026;IOF;-0,37;",
+  ].join("\n");
+
+  it("deriva a natureza do sinal quando não existe coluna Tipo", () => {
+    const parsed = parseItauCsv(utf8(appCsv));
+
+    expect(parsed.issues).toEqual([]);
+    expect(parsed.rows).toEqual([
+      { sourceRow: 3, date: "2026-08-26", description: "PAY ATACA 26/08", amount_cents: 845, nature: "saida" },
+      { sourceRow: 4, date: "2026-08-20", description: "SISPAG PIX MASTERSYS GESTAO ...", amount_cents: 12000, nature: "entrada" },
+      { sourceRow: 5, date: "2026-08-07", description: "PIX TRANSF MASTERS07/08", amount_cents: 152542, nature: "entrada" },
+      { sourceRow: 6, date: "2026-08-04", description: "IOF", amount_cents: 37, nature: "saida" },
+    ]);
+  });
+
+  it("descarta linhas de saldo sem registrá-las como issue", () => {
+    const parsed = parseItauCsv(utf8([
+      "data;lancamentos;valor (R$);saldo (R$)",
+      "27/08/2026;SALDO DO DIA;;-49,71",
+      "27/08/2026;SALDO ANTERIOR;;-10,00",
+      "27/08/2026;SALDO TOTAL DISPONÍVEL DIA;;5,00",
+    ].join("\n")));
+
+    expect(parsed).toEqual({ rows: [], issues: [] });
+  });
+
+  it("não confunde a coluna saldo (R$) com a coluna de valor", () => {
+    const parsed = parseItauCsv(utf8([
+      "data;lancamentos;valor (R$);saldo (R$)",
+      "21/08/2026;PIX QRS REDE LUCAS21/08;-8,99;1.406,42",
+    ].join("\n")));
+
+    expect(parsed.rows[0]).toMatchObject({ amount_cents: 899, nature: "saida" });
+  });
+
+  it("ainda respeita a coluna Tipo quando ela existe, mesmo com valor sem sinal", () => {
+    const parsed = parseItauCsv(utf8("Data;Histórico;Valor;Tipo\n05/01/2026;Compra;10,00;D"));
+
+    expect(parsed.rows[0]).toMatchObject({ amount_cents: 1000, nature: "saida" });
   });
 });

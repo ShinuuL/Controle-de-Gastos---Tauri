@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ParsedStatementRow } from "./itauCsv";
 import type { ReconciliationResult } from "./reconciliation";
 import {
+  applyBulkChanges,
   buildApprovedImportLines,
   createInitialImportReview,
   getInitialReviewTab,
@@ -166,5 +167,70 @@ describe("revisão da importação de extrato", () => {
     expect(
       getInitialReviewTab(result({ duplicates: [row(3)] }), []),
     ).toBe("duplicate");
+  });
+});
+
+describe("ações em massa da revisão", () => {
+  it("destrava a confirmação de um extrato inteiro com uma escolha só", () => {
+    // Reproduz o extrato real: lançamentos sem coluna "Categoria", que entram
+    // marcados para importar e sem categoria nenhuma.
+    const review = createInitialImportReview(
+      result({ newRows: [row(2), row(3), row(4)] }),
+      [{ id: "c1", name: "Alimentação" }],
+    );
+    expect(getImportReviewStatus(review)).toMatchObject({
+      missingCategories: 3,
+      canConfirm: false,
+    });
+
+    const applied = applyBulkChanges(review, "new", { categoryId: "c1" });
+
+    expect(getImportReviewStatus(applied)).toMatchObject({
+      importCount: 3,
+      missingCategories: 0,
+      canConfirm: true,
+    });
+    expect(buildApprovedImportLines(applied)).toHaveLength(3);
+  });
+
+  it("resolve conflitos pendentes em massa", () => {
+    const review = createInitialImportReview(
+      result({ conflicts: [row(2), row(3)] }),
+      [],
+    );
+    expect(getImportReviewStatus(review).pendingConflicts).toBe(2);
+
+    const ignored = applyBulkChanges(review, "conflict", { decision: "ignore" });
+
+    expect(getImportReviewStatus(ignored).pendingConflicts).toBe(0);
+  });
+
+  it("não vaza a mudança para linhas de outro grupo", () => {
+    const review = createInitialImportReview(
+      result({ newRows: [row(2)], conflicts: [row(3)] }),
+      [],
+    );
+
+    const applied = applyBulkChanges(review, "new", { categoryId: "c1" });
+
+    expect(applied.find((item) => item.group === "new")?.categoryId).toBe("c1");
+    expect(applied.find((item) => item.group === "conflict")?.categoryId).toBe("");
+  });
+
+  it("permite ignorar tudo e depois reverter sem perder a categoria escolhida", () => {
+    const review = applyBulkChanges(
+      createInitialImportReview(result({ newRows: [row(2), row(3)] }), []),
+      "new",
+      { categoryId: "c1" },
+    );
+
+    const ignored = applyBulkChanges(review, "new", { decision: "ignore" });
+    expect(getImportReviewStatus(ignored).importCount).toBe(0);
+
+    const restored = applyBulkChanges(ignored, "new", { decision: "import" });
+    expect(getImportReviewStatus(restored)).toMatchObject({
+      importCount: 2,
+      canConfirm: true,
+    });
   });
 });

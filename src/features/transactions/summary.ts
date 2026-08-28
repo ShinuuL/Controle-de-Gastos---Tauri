@@ -11,7 +11,7 @@ export interface MonthlyResult {
   realized_cents: number;
   /** Resultado liquido incluindo as previstas. */
   projected_cents: number;
-  /** Soma das entradas do mes, previstas incluidas. Sempre >= 0. */
+  /** Soma das entradas ja efetivadas no mes. Previstas ficam de fora. Sempre >= 0. */
   income_cents: number;
 }
 
@@ -27,7 +27,11 @@ export function calculateMonthlyResult(
 
       if (movement.status === "realizado") result.realized_cents += signedAmount;
       result.projected_cents += signedAmount;
-      if (movement.nature === "entrada") result.income_cents += movement.amount_cents;
+      // So entra no totalizador o dinheiro que de fato caiu: uma entrada
+       // prevista e uma promessa, e somar promessa a caixa infla o mes.
+      if (movement.nature === "entrada" && movement.status === "realizado") {
+        result.income_cents += movement.amount_cents;
+      }
       return result;
     },
     { realized_cents: 0, projected_cents: 0, income_cents: 0 },

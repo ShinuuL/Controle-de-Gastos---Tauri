@@ -1,5 +1,5 @@
 import { getDb } from "../db";
-import { monthRange } from "../date";
+import { monthRange, todayISO } from "../date";
 import { traceOperation } from "../observability/telemetry";
 import type {
   CategoryTotal,
@@ -16,6 +16,27 @@ import {
   validateNature,
   validateStatus,
 } from "./validation";
+
+/**
+ * Efetiva o que ja venceu: toda movimentacao ainda "previsto" cuja data chegou
+ * passa a "realizado". Roda a cada carregamento, entao vale para qualquer mes
+ * passado -- inclusive os que ficaram para tras enquanto o app esteve fechado.
+ *
+ * A mudanca e gravada, e nao derivada na leitura, justamente para continuar
+ * corrigivel: se o dinheiro nao caiu na data prevista, o usuario reabre a
+ * movimentacao e a marca como prevista de novo sem que o app desfaca isso.
+ */
+export async function settleDueTransactions(today: string = todayISO()): Promise<number> {
+  return traceOperation("transaction.settleDue", async () => {
+    const db = await getDb();
+    const result = await db.execute(
+      `UPDATE expenses SET status = 'realizado', updated_at = $1
+       WHERE status = 'previsto' AND date <= $2`,
+      [new Date().toISOString(), today],
+    );
+    return result.rowsAffected;
+  });
+}
 
 export async function listTransactionsByMonth(
   year: number,

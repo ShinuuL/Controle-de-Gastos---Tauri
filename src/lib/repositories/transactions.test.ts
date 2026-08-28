@@ -18,6 +18,7 @@ import {
   listTransactionsByMonth,
   monthlyTotal,
   monthlyTotalsByCategory,
+  settleDueTransactions,
   updateTransaction,
 } from "./transactions";
 
@@ -134,6 +135,17 @@ function createFakeDb(options?: {
         return { rowsAffected: 1 };
       }
       if (query.startsWith("UPDATE expenses")) {
+        if (query.includes("status = 'previsto'")) {
+          const today = values?.[1] as string;
+          const due = transactions.filter(
+            (item) => item.status === "previsto" && item.date <= today,
+          );
+          for (const item of due) {
+            item.status = "realizado";
+            item.updated_at = values?.[0] as string;
+          }
+          return { rowsAffected: due.length };
+        }
         const id = values?.[values.length - 1] as string;
         const entry = transactions.find((item) => item.id === id);
         if (!entry) return { rowsAffected: 0 };
@@ -597,6 +609,91 @@ describe("transaction repository", () => {
         "2026-03-01",
         "2026-04-01",
       ]);
+    });
+  });
+
+  describe("settleDueTransactions", () => {
+    const previsto = (id: string, date: string): StoredTransaction => ({
+      id,
+      category_id: "salario",
+      description: `entrada ${id}`,
+      amount_cents: 500_000,
+      date,
+      nature: "entrada",
+      status: "previsto",
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z",
+    });
+
+    it("efetiva o que venceu e preserva o que ainda esta por vir", async () => {
+      const fake = createFakeDb({
+        transactions: [
+          previsto("vencida", "2026-03-05"),
+          previsto("hoje", "2026-03-10"),
+          previsto("futura", "2026-03-25"),
+        ],
+      });
+      getDb.mockResolvedValue(fake.db);
+
+      const settled = await settleDueTransactions("2026-03-10");
+
+      expect(settled).toBe(2);
+      expect(fake.transactions.map((t) => [t.id, t.status])).toEqual([
+        ["vencida", "realizado"],
+        ["hoje", "realizado"],
+        ["futura", "previsto"],
+      ]);
+    });
+
+    it("alcanca meses anteriores deixados para tras", async () => {
+      const fake = createFakeDb({
+        transactions: [previsto("antiga", "2025-11-08")],
+      });
+      getDb.mockResolvedValue(fake.db);
+
+      await settleDueTransactions("2026-03-10");
+
+      expect(fake.transactions[0].status).toBe("realizado");
+    });
+
+    it("nao toca no que ja esta realizado nem carimba updated_at a toa", async () => {
+      const realizada: StoredTransaction = {
+        ...previsto("ja-paga", "2026-03-01"),
+        status: "realizado",
+      };
+      const fake = createFakeDb({ transactions: [realizada] });
+      getDb.mockResolvedValue(fake.db);
+
+      const settled = await settleDueTransactions("2026-03-10");
+
+      expect(settled).toBe(0);
+      expect(fake.transactions[0].updated_at).toBe("2026-01-01T00:00:00.000Z");
+    });
+
+    it("efetiva saidas previstas junto com as entradas", async () => {
+      const fake = createFakeDb({
+        transactions: [
+          { ...previsto("conta-luz", "2026-03-05"), nature: "saida" },
+        ],
+      });
+      getDb.mockResolvedValue(fake.db);
+
+      await settleDueTransactions("2026-03-10");
+
+      expect(fake.transactions[0].status).toBe("realizado");
+    });
+
+    it("filtra por status e data no proprio SQL", async () => {
+      const fake = createFakeDb();
+      getDb.mockResolvedValue(fake.db);
+
+      await settleDueTransactions("2026-03-10");
+
+      const call = fake.executeCalls[0];
+      expect(call.query).toContain("status = 'previsto'");
+      expect(call.query).toContain("date <= $2");
+      expect(call.values?.[1]).toBe("2026-03-10");
+      expect(call.values?.[0]).toMatch(ISO_DATE_TIME_RE);
     });
   });
 });

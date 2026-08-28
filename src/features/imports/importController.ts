@@ -1,8 +1,5 @@
-import {
-  parseItauCsv,
-  type CsvIssue,
-  type ParsedStatement,
-} from "./itauCsv";
+import { parseItauCsv, type CsvIssue, type ParsedStatement } from "./itauCsv";
+import { parseItauPdf } from "./itauPdf";
 import type { ReconciliationResult } from "./reconciliation";
 import type { ReconciliationCandidate } from "./reconciliation";
 import type { ApprovedImportLine } from "../../lib/types";
@@ -64,8 +61,23 @@ function errorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function parseImportBytes(bytes: ArrayBuffer): ParsedStatement {
-  const parsed = parseItauCsv(bytes);
+export type ImportFileKind = "csv" | "pdf";
+
+export function importFileKind(file: {
+  name: string;
+  type: string;
+}): ImportFileKind {
+  return file.type === "application/pdf" ||
+    file.name.toLowerCase().endsWith(".pdf")
+    ? "pdf"
+    : "csv";
+}
+
+async function parseImportBytes(
+  bytes: ArrayBuffer,
+  kind: ImportFileKind,
+): Promise<ParsedStatement> {
+  const parsed = kind === "pdf" ? await parseItauPdf(bytes) : parseItauCsv(bytes);
   const reviewSizeError = validateImportReviewSize(
     parsed.rows.length + parsed.issues.length,
   );
@@ -77,15 +89,16 @@ export async function prepareImportPreview(
   input: { fileName: string; bytes: ArrayBuffer },
   dependencies: ImportPreviewDependencies,
 ): Promise<ImportState> {
+  const kind = importFileKind({ name: input.fileName, type: "" });
   let parsed: ParsedStatement;
   try {
-    parsed = parseImportBytes(input.bytes);
+    parsed = await parseImportBytes(input.bytes, kind);
   } catch (error) {
     return {
       kind: "error",
       message: errorMessage(
         error,
-        "Não foi possível interpretar o extrato CSV.",
+        `Não foi possível interpretar o extrato ${kind.toUpperCase()}.`,
       ),
     };
   }
@@ -200,7 +213,7 @@ export function transitionImportState(
 
 export function validateImportFileSize(size: number): string | null {
   return size > MAX_IMPORT_FILE_BYTES
-    ? "Arquivo CSV excede o limite de 5 MiB."
+    ? "Arquivo excede o limite de 5 MiB."
     : null;
 }
 
@@ -208,12 +221,16 @@ export function validateImportFileType(file: {
   name: string;
   type: string;
 }): string | null {
-  const isPdf =
-    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  const name = file.name.toLowerCase();
+  const supported =
+    name.endsWith(".csv") ||
+    name.endsWith(".pdf") ||
+    file.type === "text/csv" ||
+    file.type === "application/pdf";
 
-  return isPdf
-    ? "A leitura automática de PDF ainda não é suportada. Exporte o extrato do Itaú em CSV para importar."
-    : null;
+  return supported
+    ? null
+    : "Formato não suportado. Importe o extrato do Itaú em CSV ou PDF.";
 }
 
 export function validateImportReviewSize(rowCount: number): string | null {

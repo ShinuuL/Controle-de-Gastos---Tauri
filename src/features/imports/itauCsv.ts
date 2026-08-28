@@ -1,23 +1,19 @@
-export type ParsedNature = "entrada" | "saida";
+import {
+  isBalanceDescription,
+  normalizeAccents,
+  parseSignedAmount,
+  parseStatementDate,
+  type ParsedStatement,
+  type ParsedStatementRow,
+  type StatementIssue,
+} from "./statementValues";
 
-export interface ParsedStatementRow {
-  sourceRow: number;
-  date: string;
-  description: string;
-  amount_cents: number;
-  nature: ParsedNature;
-  suggestedCategoryName?: string;
-}
-
-export interface CsvIssue {
-  sourceRow: number;
-  message: string;
-}
-
-export interface ParsedStatement {
-  rows: ParsedStatementRow[];
-  issues: CsvIssue[];
-}
+export type {
+  ParsedNature,
+  ParsedStatement,
+  ParsedStatementRow,
+} from "./statementValues";
+export type { StatementIssue as CsvIssue } from "./statementValues";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_ROWS = 10_000;
@@ -82,26 +78,7 @@ function recordsOf(text: string): CsvRecord[] {
 }
 
 function normalizeHeader(value: string): string {
-  return value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-}
-
-function parseDate(value: string): string | null {
-  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
-  if (!match) return null;
-  const day = Number(match[1]);
-  const month = Number(match[2]);
-  const year = Number(match[3]);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
-  return `${match[3]}-${match[2]}-${match[1]}`;
-}
-
-function parseAmount(value: string): number | null {
-  const normalized = value.trim().replace(/\s/g, "");
-  if (!/^\d+(?:\.\d{3})*(?:,\d{1,2})?$/.test(normalized)) return null;
-  const [whole, decimal = ""] = normalized.replace(/\./g, "").split(",");
-  const cents = Number(`${whole}${decimal.padEnd(2, "0")}`);
-  return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
+  return normalizeAccents(value.trim()).toLowerCase();
 }
 
 export function parseItauCsv(bytes: ArrayBuffer): ParsedStatement {
@@ -116,35 +93,51 @@ export function parseItauCsv(bytes: ArrayBuffer): ParsedStatement {
   const header = records[0].fields.map(normalizeHeader);
   const find = (...names: string[]) => names.map(normalizeHeader).map((name) => header.indexOf(name)).find((index) => index >= 0);
   const dateIndex = find("Data");
-  const descriptionIndex = find("Histórico", "Lançamento");
-  const amountIndex = find("Valor");
+  // "Lançamentos" é o cabeçalho do extrato exportado pelo app; "Histórico" e
+  // "Lançamento" são os do extrato do internet banking.
+  const descriptionIndex = find("Histórico", "Lançamento", "Lançamentos");
+  const amountIndex = find("Valor", "Valor (R$)");
+  // Só o extrato do internet banking traz "Tipo". Sem ela, a natureza vem do
+  // sinal do próprio valor.
   const typeIndex = find("Tipo");
   const categoryIndex = find("Categoria");
-  if (dateIndex === undefined || descriptionIndex === undefined || amountIndex === undefined || typeIndex === undefined) {
+  if (dateIndex === undefined || descriptionIndex === undefined || amountIndex === undefined) {
     throw new Error("Cabeçalho CSV inválido: colunas obrigatórias ausentes");
   }
   const dataRecords = records.slice(1);
   if (dataRecords.length > MAX_ROWS) throw new Error("Arquivo CSV excede o limite de 10.000 linhas");
 
   const rows: ParsedStatementRow[] = [];
-  const issues: CsvIssue[] = [];
+  const issues: StatementIssue[] = [];
   dataRecords.forEach((record) => {
     const sourceRow = record.sourceRow;
-    const date = parseDate(record.fields[dateIndex] ?? "");
-    const amount = parseAmount(record.fields[amountIndex] ?? "");
-    const type = (record.fields[typeIndex] ?? "").trim().toUpperCase();
+    const rawAmount = (record.fields[amountIndex] ?? "").trim();
     const description = (record.fields[descriptionIndex] ?? "").trim();
+    // Linha de saldo: descrição de saldo, ou valor vazio porque o número está
+    // na coluna "saldo (R$)". Nenhuma das duas é lançamento.
+    if (isBalanceDescription(description) || rawAmount === "") return;
+
+    const date = parseStatementDate(record.fields[dateIndex] ?? "");
+    const amount = parseSignedAmount(rawAmount);
+    const type = typeIndex === undefined ? null : (record.fields[typeIndex] ?? "").trim().toUpperCase();
     if (!date) {
       issues.push({ sourceRow, message: "Data inválida" });
     } else if (amount === null) {
       issues.push({ sourceRow, message: "Valor inválido" });
-    } else if (type !== "C" && type !== "D") {
+    } else if (type !== null && type !== "C" && type !== "D") {
       issues.push({ sourceRow, message: "Tipo inválido: esperado C ou D" });
     } else if (!description) {
       issues.push({ sourceRow, message: "Descrição inválida" });
     } else {
       const category = categoryIndex === undefined ? undefined : record.fields[categoryIndex]?.trim();
-      rows.push({ sourceRow, date, description, amount_cents: amount, nature: type === "C" ? "entrada" : "saida", ...(category ? { suggestedCategoryName: category } : {}) });
+      rows.push({
+        sourceRow,
+        date,
+        description,
+        amount_cents: amount.amount_cents,
+        nature: type === null ? amount.nature : type === "C" ? "entrada" : "saida",
+        ...(category ? { suggestedCategoryName: category } : {}),
+      });
     }
   });
   return { rows, issues };

@@ -13,17 +13,28 @@ describe("calculateMonthlyResult", () => {
     ).toEqual({
       realized_cents: 7_000,
       projected_cents: 8_500,
-      income_cents: 12_000,
+      income_cents: 10_000,
     });
   });
 
-  it("soma as entradas do mes, previstas incluidas", () => {
+  it("soma so as entradas ja efetivadas, ignorando as previstas", () => {
     const r = calculateMonthlyResult([
       { nature: "entrada", status: "realizado", amount_cents: 500_000 },
       { nature: "entrada", status: "previsto", amount_cents: 20_000 },
       { nature: "saida", status: "realizado", amount_cents: 120_000 },
     ]);
-    expect(r.income_cents).toBe(520_000);
+    expect(r.income_cents).toBe(500_000);
+  });
+
+  it("mes so com entrada prevista mantem o totalizador zerado", () => {
+    const r = calculateMonthlyResult([
+      { nature: "entrada", status: "previsto", amount_cents: 20_000 },
+    ]);
+    expect(r).toEqual({
+      realized_cents: 0,
+      projected_cents: 20_000,
+      income_cents: 0,
+    });
   });
 
   it("nao conta saidas como entrada", () => {

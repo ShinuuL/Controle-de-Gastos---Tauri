@@ -78,7 +78,7 @@ export function DashboardSummaryCards({
       />
       <SummaryCard
         title="Entradas"
-        description="Tudo que entrou no mês, previstas incluídas."
+        description="Entradas já efetivadas no mês."
         cents={incomeCents}
         mascot={strawberry ? STRAWBERRY_DECORATIVE_ASSETS.entradas : undefined}
         ariaLabel="Entradas do mês"

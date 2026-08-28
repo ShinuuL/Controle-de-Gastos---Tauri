@@ -37,3 +37,10 @@ src-tauri/gen/android/keystore.properties
 *.njsproj
 *.sln
 *.sw?
+
+# Dados pessoais e artefatos de diagnostico: nunca versionar.
+# Extratos reais (CPF, agencia, conta e historico), o QR PIX estatico com CPF
+# gravado na imagem, e bug reports do Android (logs do aparelho).
+extrato/
+src/assets/WhatsApp Image*.jpeg
+bugreport-*.zip

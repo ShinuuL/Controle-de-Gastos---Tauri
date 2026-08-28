@@ -6,6 +6,7 @@ import { buildChartSlices } from "./chartData";
 import {
   monthlyTotalsByCategory,
   listTransactionsByMonth,
+  settleDueTransactions,
 } from "../../lib/repositories/transactions";
 import { calculateMonthlyResult } from "../transactions/summary";
 import { formatMonthLabel } from "../../lib/date";
@@ -31,10 +32,13 @@ export default function DashboardScreen() {
     setError(null);
     setLoading(true);
 
-    Promise.all([
-      monthlyTotalsByCategory(year, month),
-      listTransactionsByMonth(year, month),
-    ])
+    settleDueTransactions()
+      .then(() =>
+        Promise.all([
+          monthlyTotalsByCategory(year, month),
+          listTransactionsByMonth(year, month),
+        ]),
+      )
       .then(([categoryTotals, monthTransactions]) => {
         if (cancelled) return;
         setTotals(categoryTotals);

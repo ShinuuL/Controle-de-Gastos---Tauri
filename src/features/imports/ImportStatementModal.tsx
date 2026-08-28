@@ -12,6 +12,7 @@ import {
   Copy,
   X,
 } from "lucide-react";
+import { createPortal } from "react-dom";
 import Button from "../../components/ui/Button";
 import { formatSignedBRL } from "../../lib/currency";
 import { formatDateBR } from "../../lib/date";
@@ -149,6 +150,22 @@ export function getImportReviewStatus(
   };
 }
 
+/**
+ * Aplica a mesma mudança a todas as linhas de um grupo. Extratos reais chegam
+ * com dezenas de lançamentos e nenhuma categoria sugerida (o CSV do app do Itaú
+ * não tem coluna "Categoria"), então escolher linha a linha inviabiliza a
+ * importação: sem isso o botão de confirmar nunca sai do estado desabilitado.
+ */
+export function applyBulkChanges(
+  review: ImportReviewLine[],
+  group: ReviewGroup,
+  changes: Partial<ImportReviewLine>,
+): ImportReviewLine[] {
+  return review.map((item) =>
+    item.group === group ? { ...item, ...changes } : item,
+  );
+}
+
 export function buildApprovedImportLines(
   review: ImportReviewLine[],
 ): ApprovedImportLine[] {
@@ -229,6 +246,70 @@ function ReadOnlyRow({
         </div>
       </div>
     </article>
+  );
+}
+
+function BulkActions({
+  group,
+  categories,
+  disabled,
+  onApply,
+}: {
+  group: ReviewGroup;
+  categories: Category[];
+  disabled: boolean;
+  onApply: (changes: Partial<ImportReviewLine>) => void;
+}) {
+  const selectId = `${group}-bulk-category`;
+  const [bulkCategoryId, setBulkCategoryId] = useState("");
+
+  return (
+    <div className="rounded-xl border border-border bg-background p-4">
+      <p className="text-sm font-medium">Aplicar a todas as linhas desta aba</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+        <div className="sm:col-span-1">
+          <label htmlFor={selectId} className="sr-only">
+            Categoria para todas as linhas desta aba
+          </label>
+          <select
+            id={selectId}
+            value={bulkCategoryId}
+            disabled={disabled}
+            onChange={(event) => {
+              const categoryId = event.target.value;
+              setBulkCategoryId(categoryId);
+              if (categoryId) onApply({ categoryId });
+            }}
+            className={inputClass}
+          >
+            <option value="">Definir categoria de todas…</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={disabled}
+          className="whitespace-nowrap"
+          onClick={() => onApply({ decision: "import" })}
+        >
+          Importar todas
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={disabled}
+          className="whitespace-nowrap"
+          onClick={() => onApply({ decision: "ignore" })}
+        >
+          Ignorar todas
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -436,6 +517,10 @@ export default function ImportStatementModal({
     );
   };
 
+  const applyBulk = (group: ReviewGroup, changes: Partial<ImportReviewLine>) => {
+    setReview((current) => applyBulkChanges(current, group, changes));
+  };
+
   const handleTabKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
@@ -451,12 +536,12 @@ export default function ImportStatementModal({
   const blockingMessage = status.pendingConflicts
     ? `Decida sobre ${status.pendingConflicts} conflito${status.pendingConflicts === 1 ? "" : "s"}.`
     : status.missingCategories
-      ? `Selecione a categoria de ${status.missingCategories} movimentação${status.missingCategories === 1 ? "" : "ões"}.`
+      ? `Selecione a categoria de ${status.missingCategories} movimenta${status.missingCategories === 1 ? "ção" : "ções"}.`
       : status.importCount === 0
         ? "Escolha ao menos uma movimentação para importar."
-        : `${status.importCount} movimentação${status.importCount === 1 ? " pronta" : "ões prontas"} para importar.`;
+        : `${status.importCount} movimenta${status.importCount === 1 ? "ção pronta" : "ções prontas"} para importar.`;
 
-  return (
+  const overlay = (
     <div
       className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/60 sm:items-center sm:p-4"
       onMouseDown={(event) => {
@@ -550,6 +635,14 @@ export default function ImportStatementModal({
                   hidden={activeTab !== tab}
                   className="space-y-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
+                  {(tab === "new" || tab === "conflict") && tabReview.length > 0 && (
+                    <BulkActions
+                      group={tab}
+                      categories={categories}
+                      disabled={submitting}
+                      onApply={(changes) => applyBulk(tab, changes)}
+                    />
+                  )}
                   {(tab === "new" || tab === "conflict") &&
                     tabReview.map((item) => (
                       <ReviewRow
@@ -609,12 +702,12 @@ export default function ImportStatementModal({
                 {blockingMessage}
               </p>
               <div className="grid shrink-0 grid-cols-1 gap-2 sm:grid-cols-2">
-                <Button type="button" variant="ghost" className="whitespace-nowrap focus-visible:outline-offset-2" onClick={onClose} disabled={submitting}>
+                <Button type="button" variant="ghost" className="order-2 whitespace-nowrap focus-visible:outline-offset-2 sm:order-1" onClick={onClose} disabled={submitting}>
                   Cancelar
                 </Button>
                 <Button
                   type="button"
-                  className="whitespace-nowrap focus-visible:outline-offset-2"
+                  className="order-1 whitespace-nowrap focus-visible:outline-offset-2 sm:order-2"
                   disabled={!status.canConfirm || submitting}
                   aria-describedby={`${descriptionId}-status`}
                   onClick={() => void onConfirm(buildApprovedImportLines(review))}
@@ -630,4 +723,13 @@ export default function ImportStatementModal({
       </div>
     </div>
   );
+
+  // O dialog é `fixed`, mas `.theme-shell > *` dá z-index a <main>, que vira um
+  // contexto de empilhamento: dentro dele o z-50 do overlay não alcança a
+  // BottomNav (z-20), que passava por cima e escondia o botão de confirmar.
+  // Portalizar para o body tira o dialog desse contexto. Em render de string
+  // (testes de markup) não há document, então o overlay sai inline.
+  return typeof document === "undefined"
+    ? overlay
+    : createPortal(overlay, document.body);
 }
