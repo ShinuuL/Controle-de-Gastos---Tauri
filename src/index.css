@@ -1,5 +1,8 @@
 @import "tailwindcss";
 @import "@fontsource-variable/inter";
+/* So a marca usa esta face; ver .wordmark. Empacotada porque a CSP
+   (script-src/font-src 'self') bloqueia fontes externas. */
+@import "@fontsource/pixelify-sans/700.css";
 
 :root,
 :root[data-theme="light"] {
@@ -108,6 +111,14 @@
   .theme-shell {
     isolation: isolate;
     position: relative;
+  }
+
+  /* Marca do app. Fica so no nome Contr0l -- o zero e o ponto do desenho,
+     e a face de pixel e o unico destaque tipografico da interface. */
+  .wordmark {
+    font-family: "Pixelify Sans", var(--font-sans);
+    font-weight: 700;
+    letter-spacing: .02em;
   }
 
   :root[data-theme="strawberry"] .theme-shell::before {
