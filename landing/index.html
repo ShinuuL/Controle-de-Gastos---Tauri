@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contr0l — controle de gastos que fica no seu aparelho</title>
+<meta name="description" content="App de controle de gastos para Android que funciona sem internet e sem conta. Os lançamentos ficam gravados no celular, não em servidor.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================ tokens
+   A pagina e papel frio de contabilidade; as telas do app sao os unicos
+   objetos escuros nela. As cores do aparelho vem do tema real do app
+   (src/index.css), para que o produto e a pagina nao se contradigam. */
+:root{
+  --papel:#eef1f6;
+  --papel-alto:#f7f9fc;
+  --linha:#d5dce6;
+  --tinta:#0f172a;
+  --tinta-suave:#55627a;
+  --marca:#1d4ed8;
+  --credito:#047857;
+
+  /* tema escuro do app, usado so dentro dos aparelhos */
+  --app-bg:#0f172a;
+  --app-surface:#101a34;
+  --app-fg:#f8fafc;
+  --app-muted:#94a3b8;
+  --app-borda:#1e293b;
+  --app-primary:#2563eb;
+  --app-secondary:#60a5fa;
+  --app-success:#34d399;
+  --app-accent:#059669;
+
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--papel);
+  color:var(--tinta);
+  font-family:var(--sans);
+  font-size:17px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{margin:0;line-height:1.15;font-weight:600}
+p{margin:0}
+a{color:inherit}
+
+.env{width:min(1120px,100% - 2.5rem);margin-inline:auto}
+
+/* pauta do livro-caixa: hairline entre as faixas, nada de moldura */
+.faixa{border-top:1px solid var(--linha);padding-block:clamp(3.5rem,8vw,6rem)}
+.faixa--topo{border-top:0}
+
+.rotulo{
+  font-family:var(--mono);
+  font-size:.72rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--tinta-suave);
+  margin-bottom:1.25rem;
+}
+
+/* ============================================================ cabecalho */
+.cab{
+  position:sticky;top:0;z-index:20;
+  background:color-mix(in srgb,var(--papel) 88%,transparent);
+  backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--linha);
+}
+.cab__int{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding-block:.9rem}
+.marca{display:flex;align-items:center;gap:.6rem;font-family:var(--mono);font-weight:600;font-size:1.05rem;letter-spacing:-.01em}
+.marca svg{display:block}
+
+/* ============================================================ hero */
+.hero{display:grid;grid-template-columns:1fr;gap:clamp(2.5rem,6vw,4rem);align-items:center}
+@media(min-width:900px){.hero{grid-template-columns:1.05fr .95fr}}
+.hero h1{font-size:clamp(2.2rem,5.4vw,3.6rem);letter-spacing:-.025em;text-wrap:balance}
+.hero h1 em{font-style:normal;color:var(--marca)}
+.hero__sub{margin-top:1.25rem;font-size:clamp(1rem,2vw,1.15rem);color:var(--tinta-suave);max-width:46ch}
+
+/* ============================================================ recibo
+   O bloco de download e o elemento de assinatura da pagina: um recibo de
+   verificacao. Os dados vem do manifesto assinado servido pelo gateway. */
+.recibo{
+  margin-top:2rem;
+  background:var(--papel-alto);
+  border:1px solid var(--linha);
+  border-radius:.9rem;
+  padding:1.25rem;
+  max-width:30rem;
+  box-shadow:0 1px 0 rgb(15 23 42 / .04),0 12px 28px -18px rgb(15 23 42 / .35);
+}
+.baixar{
+  display:flex;align-items:center;justify-content:center;gap:.6rem;
+  width:100%;min-height:3.25rem;
+  background:var(--tinta);color:#fff;
+  border:0;border-radius:.6rem;
+  font:600 1rem/1 var(--sans);
+  text-decoration:none;cursor:pointer;
+  transition:background .18s ease,transform .18s ease;
+}
+.baixar:hover{background:var(--marca)}
+.baixar:active{transform:translateY(1px)}
+.baixar:focus-visible{outline:3px solid var(--marca);outline-offset:3px}
+
+.recibo__linhas{margin-top:1rem;border-top:1px dashed var(--linha);padding-top:.85rem}
+.rec{
+  display:grid;grid-template-columns:auto 1fr;gap:.75rem;
+  align-items:baseline;
+  padding-block:.3rem;
+  font-family:var(--mono);font-size:.8rem;
+}
+.rec dt{color:var(--tinta-suave);white-space:nowrap}
+.rec dd{margin:0;text-align:right;word-break:break-all}
+.rec dd .ok{color:var(--credito)}
+
+/* ============================================================ aparelho */
+.fone{
+  width:100%;max-width:300px;margin-inline:auto;
+  background:var(--app-bg);
+  border:8px solid #060b18;
+  border-radius:2.2rem;
+  padding:.55rem .5rem 0;
+  box-shadow:0 30px 60px -30px rgb(15 23 42 / .55);
+  color:var(--app-fg);
+  font-size:12px;line-height:1.45;
+  overflow:hidden;
+}
+.fone__topo{display:flex;align-items:center;justify-content:space-between;padding:.25rem .55rem .6rem;font-size:11px;color:var(--app-muted);font-family:var(--mono)}
+.fone__tela{padding:0 .55rem}
+.fone__t{font-size:14px;font-weight:600;margin-bottom:.55rem}
+.fone__nav{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:.25rem;
+  margin-top:.85rem;padding:.5rem .25rem calc(.5rem + env(safe-area-inset-bottom));
+  border-top:1px solid var(--app-borda);
+  font-size:10px;color:var(--app-muted);text-align:center;
+}
+.fone__nav b{display:block;font-weight:500}
+.fone__nav .on{color:var(--app-secondary)}
+
+.cartao{background:var(--app-surface);border:1px solid var(--app-borda);border-radius:.6rem;padding:.55rem .65rem;margin-bottom:.45rem}
+.cartao__r{font-size:10px;color:var(--app-muted)}
+.cartao__v{font-family:var(--mono);font-size:15px;font-weight:600;letter-spacing:-.02em}
+.pos{color:var(--app-success)}
+
+.mes{display:flex;align-items:center;justify-content:space-between;color:var(--app-muted);font-size:11px;margin-bottom:.55rem}
+
+/* rosca */
+.rosca{position:relative;display:grid;place-items:center;margin:.35rem 0 .6rem}
+.rosca svg{transform:rotate(-90deg)}
+.rosca__c{position:absolute;text-align:center}
+.rosca__c b{display:block;font-family:var(--mono);font-size:14px;font-weight:600}
+.rosca__c span{font-size:9px;color:var(--app-muted)}
+
+.tab{width:100%;border-collapse:collapse;font-size:10.5px}
+.tab th{text-align:left;color:var(--app-muted);font-weight:500;font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding-bottom:.3rem}
+.tab td{padding:.32rem 0;border-top:1px solid var(--app-borda)}
+.tab td:last-child,.tab th:last-child{text-align:right;font-family:var(--mono)}
+.ponto{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:.35rem;vertical-align:middle}
+
+/* lista de movimentacoes: as duas linhas por item, como no app */
+.mov{border:1px solid var(--app-borda);border-radius:.6rem;overflow:hidden}
+.mov__i{padding:.5rem .55rem;border-top:1px solid var(--app-borda)}
+.mov__i:first-child{border-top:0}
+.mov__a{display:flex;justify-content:space-between;gap:.5rem;align-items:flex-start}
+.mov__d{font-size:11.5px;font-weight:500}
+.mov__v{font-family:var(--mono);font-size:11.5px;font-weight:600;white-space:nowrap}
+.mov__b{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;margin-top:.25rem;font-size:9.5px;color:var(--app-muted)}
+.selo{border-radius:99px;padding:.05rem .35rem;background:var(--app-accent);color:#fff}
+.selo--prev{background:transparent;border:1px solid #bd6a16;color:var(--app-fg)}
+
+.barra{height:5px;border-radius:99px;background:var(--app-borda);overflow:hidden;margin-top:.3rem}
+.barra i{display:block;height:100%;border-radius:99px;background:var(--app-primary)}
+
+/* ============================================================ telas */
+.telas{display:grid;gap:2.5rem;grid-template-columns:1fr}
+@media(min-width:760px){.telas{grid-template-columns:repeat(3,1fr);gap:1.5rem}}
+.tela__t{font-size:1rem;margin-top:1.25rem}
+.tela__d{margin-top:.35rem;color:var(--tinta-suave);font-size:.92rem}
+
+/* ============================================================ texto */
+.duas{display:grid;gap:clamp(2rem,5vw,3.5rem);grid-template-columns:1fr}
+@media(min-width:860px){.duas{grid-template-columns:.9fr 1.1fr}}
+.duas h2{font-size:clamp(1.6rem,3.4vw,2.2rem);letter-spacing:-.02em;text-wrap:balance}
+.corpo p+p{margin-top:1rem}
+.corpo{color:var(--tinta-suave);max-width:60ch}
+.corpo strong{color:var(--tinta);font-weight:600}
+
+.itens{list-style:none;margin:0;padding:0;display:grid;gap:1.5rem}
+@media(min-width:700px){.itens{grid-template-columns:1fr 1fr}}
+.item h3{font-size:1rem;display:flex;align-items:baseline;gap:.5rem}
+.item h3::before{
+  content:attr(data-v);
+  font-family:var(--mono);font-size:1.35rem;font-weight:600;line-height:1;
+  color:var(--credito);
+}
+.item p{margin-top:.4rem;color:var(--tinta-suave);font-size:.94rem}
+
+.passos{list-style:none;margin:1.25rem 0 0;padding:0;counter-reset:p;display:grid;gap:.85rem;max-width:52ch}
+.passos li{counter-increment:p;display:grid;grid-template-columns:auto 1fr;gap:.7rem;color:var(--tinta-suave);font-size:.94rem}
+.passos li::before{content:counter(p);font-family:var(--mono);font-size:.78rem;color:var(--tinta);border:1px solid var(--linha);border-radius:50%;width:1.55rem;height:1.55rem;display:grid;place-items:center;background:var(--papel-alto)}
+
+/* ============================================================ rodape */
+.rodape{border-top:1px solid var(--linha);padding-block:2.5rem;font-size:.88rem;color:var(--tinta-suave)}
+.rodape__int{display:flex;flex-wrap:wrap;gap:1rem 2rem;justify-content:space-between;align-items:center}
+.rodape a{color:var(--marca);text-decoration:none}
+.rodape a:hover{text-decoration:underline}
+
+/* ============================================================ motion */
+.sobe{opacity:0;transform:translateY(12px);animation:sobe .7s cubic-bezier(.2,.7,.3,1) forwards}
+.sobe:nth-child(2){animation-delay:.08s}
+@keyframes sobe{to{opacity:1;transform:none}}
+.arco{stroke-dasharray:var(--l) 999;stroke-dashoffset:var(--l);animation:desenha 1.1s cubic-bezier(.3,.8,.35,1) forwards;animation-delay:.25s}
+@keyframes desenha{to{stroke-dashoffset:0}}
+@media(prefers-reduced-motion:reduce){
+  .sobe,.arco{animation:none;opacity:1;transform:none;stroke-dashoffset:0}
+}
+</style>
+</head>
+<body>
+
+<header class="cab">
+  <div class="env cab__int">
+    <span class="marca">
+      <svg width="24" height="24" viewBox="0 0 1024 1024" aria-hidden="true">
+        <rect width="1024" height="1024" rx="230" fill="#0f172a"/>
+        <path fill="#2563eb" d="M522.5 212.02A300 300 0 0 1 653.85 727.4L601.3 613.9a175 175 0 0 0-78.8-300.9Z"/>
+        <path fill="#34d399" d="M636.15 741.13A300 300 0 0 1 366.9 704.6l72.9-95.03a175 175 0 0 0 157.1 21.31Z"/>
+        <path fill="#60a5fa" d="M346.3 689.6A300 300 0 0 1 466.75 214.6l19.65 116.15a175 175 0 0 0-70.26 277.1Z"/>
+      </svg>
+      Contr0l
+    </span>
+    <a class="baixar" style="width:auto;min-height:2.4rem;padding:0 1rem;font-size:.88rem" href="#baixar">Baixar</a>
+  </div>
+</header>
+
+<main>
+
+<!-- ========================================================= hero -->
+<section class="faixa faixa--topo">
+  <div class="env hero">
+    <div>
+      <div class="sobe">
+        <p class="rotulo">Android · gratuito · sem cadastro</p>
+        <h1>Suas finanças ficam <em>no seu aparelho</em>.</h1>
+        <p class="hero__sub">
+          Contr0l é um app de controle de gastos que funciona sem internet e sem
+          conta. Os lançamentos ficam gravados no celular — não passam por
+          servidor nenhum, nem pelo meu.
+        </p>
+      </div>
+
+      <div class="recibo sobe" id="baixar">
+        <a class="baixar" id="lnk" href="https://updates-gateway.sofaltaumaletr.workers.dev/v1/apps/contr0l/download/0.2.9/contr0l-0.2.9.apk">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 12 5 5 5-5"/><path d="M5 21h14"/></svg>
+          Baixar para Android
+        </a>
+        <dl class="recibo__linhas">
+          <div class="rec"><dt>versão</dt><dd id="v">0.2.9</dd></div>
+          <div class="rec"><dt>tamanho</dt><dd id="t">66,4 MB</dd></div>
+          <div class="rec"><dt>requer</dt><dd>Android 7.0 ou superior</dd></div>
+          <div class="rec"><dt>sha256</dt><dd id="h">844d15c1a55f348c8b4b8e514ed8fb5125549a0aed1561ee7c6b7ae0decaa392</dd></div>
+          <div class="rec"><dt>assinatura</dt><dd><span class="ok" id="s">Ed25519 · dcbd34553e007416</span></dd></div>
+        </dl>
+      </div>
+    </div>
+
+    <!-- Tela: Resumo -->
+    <div class="fone sobe" role="img" aria-label="Tela de resumo do Contr0l mostrando o mês de agosto de 2026, com realizado de R$ 2.500,00 e um gráfico de rosca das saídas por categoria.">
+      <div class="fone__topo"><span>9:41</span><span>Contr0l</span></div>
+      <div class="fone__tela">
+        <div class="fone__t">Resumo</div>
+        <div class="mes"><span>‹</span><span>Agosto de 2026</span><span>›</span></div>
+
+        <div class="cartao">
+          <div class="cartao__r">Realizado</div>
+          <div class="cartao__v pos">+R$ 2.500,00</div>
+        </div>
+        <div class="cartao">
+          <div class="cartao__r">Projeção</div>
+          <div class="cartao__v pos">+R$ 2.500,00</div>
+        </div>
+
+        <div class="cartao">
+          <div class="cartao__r" style="margin-bottom:.2rem">Saídas por categoria</div>
+          <div class="rosca">
+            <svg width="132" height="132" viewBox="0 0 132 132" aria-hidden="true">
+              <!-- r=54 -> C = 339.29 ; fatias 48% / 36% / 16% -->
+              <circle class="arco" style="--l:160" cx="66" cy="66" r="54" fill="none" stroke="#2563eb" stroke-width="21"/>
+              <circle class="arco" style="--l:119" cx="66" cy="66" r="54" fill="none" stroke="#34d399" stroke-width="21" transform="rotate(174 66 66)"/>
+              <circle class="arco" style="--l:51" cx="66" cy="66" r="54" fill="none" stroke="#60a5fa" stroke-width="21" transform="rotate(305 66 66)"/>
+            </svg>
+            <div class="rosca__c"><b>R$ 2.500,00</b><span>Total</span></div>
+          </div>
+          <table class="tab">
+            <thead><tr><th>Categoria</th><th>Valor</th></tr></thead>
+            <tbody>
+              <tr><td><span class="ponto" style="background:#2563eb"></span>Mercado</td><td>−R$ 1.200,00</td></tr>
+              <tr><td><span class="ponto" style="background:#34d399"></span>Aluguel</td><td>−R$ 900,00</td></tr>
+              <tr><td><span class="ponto" style="background:#60a5fa"></span>Transporte</td><td>−R$ 400,00</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="fone__nav">
+        <span class="on"><b>▦</b>Resumo</span>
+        <span><b>⇄</b>Movimentações</span>
+        <span><b>◫</b>Categorias</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================= telas -->
+<section class="faixa">
+  <div class="env">
+    <p class="rotulo">Três telas, e só</p>
+    <h2 style="font-size:clamp(1.6rem,3.4vw,2.2rem);letter-spacing:-.02em;max-width:22ch">
+      O suficiente para saber para onde o dinheiro foi.
+    </h2>
+
+    <div class="telas" style="margin-top:2.5rem">
+
+      <div>
+        <div class="fone" role="img" aria-label="Tela de movimentações listando salário, mercado e aluguel de agosto de 2026.">
+          <div class="fone__topo"><span>9:41</span><span>Contr0l</span></div>
+          <div class="fone__tela">
+            <div class="fone__t">Movimentações</div>
+            <div class="mes"><span>‹</span><span>Agosto de 2026</span><span>›</span></div>
+            <div class="mov">
+              <div class="mov__i">
+                <div class="mov__a"><span class="mov__d">Salário</span><span class="mov__v pos">+R$ 5.000,00</span></div>
+                <div class="mov__b"><span>05/08</span><span class="ponto" style="background:#34d399"></span><span>Renda</span><span class="selo">Realizada</span></div>
+              </div>
+              <div class="mov__i">
+                <div class="mov__a"><span class="mov__d">Compra do mês no mercado do bairro</span><span class="mov__v">−R$ 1.200,00</span></div>
+                <div class="mov__b"><span>07/08</span><span class="ponto" style="background:#2563eb"></span><span>Mercado</span><span class="selo">Realizada</span></div>
+              </div>
+              <div class="mov__i">
+                <div class="mov__a"><span class="mov__d">Aluguel</span><span class="mov__v">−R$ 900,00</span></div>
+                <div class="mov__b"><span>10/08</span><span class="ponto" style="background:#60a5fa"></span><span>Moradia</span><span class="selo selo--prev">Prevista</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="fone__nav">
+            <span><b>▦</b>Resumo</span>
+            <span class="on"><b>⇄</b>Movimentações</span>
+            <span><b>◫</b>Categorias</span>
+          </div>
+        </div>
+        <h3 class="tela__t">Entradas e saídas na mesma lista</h3>
+        <p class="tela__d">Descrições longas quebram em duas linhas. Cada item mostra se já aconteceu ou ainda está previsto.</p>
+      </div>
+
+      <div>
+        <div class="fone" role="img" aria-label="Tela de categorias com orçamentos mensais e barras de progresso.">
+          <div class="fone__topo"><span>9:41</span><span>Contr0l</span></div>
+          <div class="fone__tela">
+            <div class="fone__t">Categorias</div>
+            <div class="cartao">
+              <div class="mov__a"><span class="mov__d"><span class="ponto" style="background:#2563eb"></span>Mercado</span><span class="mov__v">R$ 1.200 / 1.500</span></div>
+              <div class="barra"><i style="width:80%"></i></div>
+            </div>
+            <div class="cartao">
+              <div class="mov__a"><span class="mov__d"><span class="ponto" style="background:#60a5fa"></span>Moradia</span><span class="mov__v">R$ 900 / 900</span></div>
+              <div class="barra"><i style="width:100%;background:#bd6a16"></i></div>
+            </div>
+            <div class="cartao">
+              <div class="mov__a"><span class="mov__d"><span class="ponto" style="background:#34d399"></span>Transporte</span><span class="mov__v">R$ 400 / 600</span></div>
+              <div class="barra"><i style="width:67%"></i></div>
+            </div>
+            <div class="cartao">
+              <div class="mov__a"><span class="mov__d"><span class="ponto" style="background:#a855f7"></span>Lazer</span><span class="mov__v">sem orçamento</span></div>
+            </div>
+          </div>
+          <div class="fone__nav">
+            <span><b>▦</b>Resumo</span>
+            <span><b>⇄</b>Movimentações</span>
+            <span class="on"><b>◫</b>Categorias</span>
+          </div>
+        </div>
+        <h3 class="tela__t">Orçamento por categoria</h3>
+        <p class="tela__d">Defina um teto mensal e acompanhe quanto já foi usado. Categorias sem orçamento continuam funcionando normalmente.</p>
+      </div>
+
+      <div>
+        <div class="fone" role="img" aria-label="Tela de importação de extrato do Itaú em CSV, com prévia das linhas antes de gravar.">
+          <div class="fone__topo"><span>9:41</span><span>Contr0l</span></div>
+          <div class="fone__tela">
+            <div class="fone__t">Importar extrato</div>
+            <p style="font-size:10.5px;color:var(--app-muted);margin-bottom:.5rem">3 lançamentos encontrados · 1 já existe</p>
+            <div class="mov">
+              <div class="mov__i">
+                <div class="mov__a"><span class="mov__d">PIX ENVIADO MERCADO</span><span class="mov__v">−R$ 240,00</span></div>
+                <div class="mov__b"><span>12/08</span><span class="selo">Importar</span></div>
+              </div>
+              <div class="mov__i">
+                <div class="mov__a"><span class="mov__d">TARIFA MENSALIDADE</span><span class="mov__v">−R$ 34,90</span></div>
+                <div class="mov__b"><span>12/08</span><span class="selo">Importar</span></div>
+              </div>
+              <div class="mov__i" style="opacity:.5">
+                <div class="mov__a"><span class="mov__d">SALARIO</span><span class="mov__v pos">+R$ 5.000,00</span></div>
+                <div class="mov__b"><span>05/08</span><span class="selo selo--prev">Duplicada</span></div>
+              </div>
+            </div>
+            <div class="cartao" style="margin-top:.5rem;text-align:center;color:var(--app-secondary);font-size:11px">Revisar e gravar</div>
+          </div>
+          <div class="fone__nav">
+            <span><b>▦</b>Resumo</span>
+            <span class="on"><b>⇄</b>Movimentações</span>
+            <span><b>◫</b>Categorias</span>
+          </div>
+        </div>
+        <h3 class="tela__t">Importação de extrato</h3>
+        <p class="tela__d">Extrato do Itaú em CSV, lido no próprio aparelho. Lançamentos repetidos são marcados antes de você gravar.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================= privacidade -->
+<section class="faixa">
+  <div class="env duas">
+    <div>
+      <p class="rotulo">Onde os dados ficam</p>
+      <h2>Não existe servidor para vazar.</h2>
+    </div>
+    <div class="corpo">
+      <p>
+        O Contr0l guarda tudo num banco SQLite dentro do próprio aparelho. Não há
+        cadastro, não há login, e o app <strong>não faz nenhuma requisição de rede</strong>
+        durante o uso normal.
+      </p>
+      <p>
+        Isso tem uma consequência que prefiro dizer na frente: <strong>se você
+        desinstalar o app ou perder o celular, os lançamentos vão junto</strong>.
+        Não tenho como recuperar — eu não tenho cópia.
+      </p>
+      <p>
+        Sincronização em nuvem está no plano, opcional e com criptografia feita no
+        aparelho: o servidor guardaria um arquivo que ele mesmo não consegue ler.
+      </p>
+
+      <ul class="itens" style="margin-top:2rem">
+        <li class="item">
+          <h3 data-v="0">contas</h3>
+          <p>Instalou, abriu, já está usando. Sem e-mail, sem senha, sem verificação.</p>
+        </li>
+        <li class="item">
+          <h3 data-v="0">rastreadores</h3>
+          <p>Sem anúncios, sem SDK de terceiros, sem telemetria enviada para fora.</p>
+        </li>
+        <li class="item">
+          <h3 data-v="0">requisições de rede</h3>
+          <p>O app funciona no metrô, no avião e no interior sem sinal. Não existe estado "carregando".</p>
+        </li>
+        <li class="item">
+          <h3 data-v="0">bytes em servidor</h3>
+          <p>Não tenho cópia dos seus lançamentos, e não tenho como obter uma.</p>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================= instalar -->
+<section class="faixa">
+  <div class="env duas">
+    <div>
+      <p class="rotulo">Como instalar</p>
+      <h2>Quatro passos, uma vez só.</h2>
+    </div>
+    <div class="corpo">
+      <p>
+        O app é distribuído fora da Play Store, então o Android vai pedir uma
+        confirmação na primeira instalação. É o comportamento normal para qualquer
+        APK, e vale conferir o que você está instalando.
+      </p>
+      <ol class="passos">
+        <li>Baixe o APK pelo botão acima.</li>
+        <li>Abra o arquivo. O Android vai avisar que a origem é desconhecida.</li>
+        <li>Toque em <strong>Configurações</strong> e permita instalar deste app — normalmente o navegador ou o gerenciador de arquivos.</li>
+        <li>Volte e confirme a instalação.</li>
+      </ol>
+      <p style="margin-top:1.5rem">
+        Quer conferir antes? Compare o sha256 do arquivo baixado com o que está no
+        recibo. No Android, qualquer app de hash resolve; no computador,
+        <code style="font-family:var(--mono);font-size:.85em">certutil -hashfile contr0l-0.2.9.apk SHA256</code>.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================= assinatura -->
+<section class="faixa">
+  <div class="env duas">
+    <div>
+      <p class="rotulo">Atualizações</p>
+      <h2>Toda versão vem assinada.</h2>
+    </div>
+    <div class="corpo">
+      <p>
+        Cada release é assinada com uma chave Ed25519 que fica na minha máquina e
+        nunca sai dela. O servidor que entrega o arquivo é só transporte:
+        <strong>se ele for comprometido, o app rejeita o binário</strong>, porque a
+        assinatura não bateria.
+      </p>
+      <p>
+        O recibo no topo desta página não é enfeite — ele é lido do manifesto
+        assinado, o mesmo que o app confere antes de aceitar uma atualização.
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="rodape">
+  <div class="env rodape__int">
+    <span>Contr0l · feito por Gabriel Garcia</span>
+    <span><a href="#baixar">Baixar para Android</a></span>
+  </div>
+</footer>
+
+<script>
+/* O recibo e preenchido a partir do manifesto assinado servido pelo gateway,
+   para que versao, tamanho e hash nunca fiquem desatualizados nesta pagina.
+   Os valores no HTML sao o ultimo estado conhecido: se a rede falhar, a pagina
+   continua correta e o download continua funcionando. */
+(async () => {
+  const GATEWAY = "https://updates-gateway.sofaltaumaletr.workers.dev";
+  const mb = (b) => (b / 1048576).toFixed(1).replace(".", ",") + " MB";
+  try {
+    const r = await fetch(`${GATEWAY}/v1/apps/contr0l/latest?channel=stable`);
+    if (!r.ok) return;
+    const { manifest, signature } = await r.json();
+    const a = manifest.artifacts.find((x) => x.kind === "apk");
+    if (!a) return;
+    document.getElementById("v").textContent = manifest.version;
+    document.getElementById("t").textContent = mb(a.size);
+    document.getElementById("h").textContent = a.sha256;
+    document.getElementById("s").textContent = `${signature.alg} · ${signature.key_id}`;
+    document.getElementById("lnk").href = a.url;
+  } catch {
+    /* offline ou gateway fora: o estado embutido no HTML permanece valido */
+  }
+})();
+</script>
+</body>
+</html>
