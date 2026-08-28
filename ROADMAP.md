@@ -81,68 +81,79 @@ rodou e após reiniciar o app voltou ao normal com os dados preservados.
 **Regra permanente:** migração aplicada nunca é editada, só nova versão. Editar
 a v1 depois de distribuída foi a causa desta fase inteira.
 
-### Fase 13 — Contas e login
+### Fase 13 — Chave de licença no download (decidido em 2026-08-28)
 
-Conta única entre a landing page e o app. Regra de liberação já implementada e
-testada em `decideAccess()` (`src/features/auth/session.ts`).
+**A chave protege o download, não o app.** O app permanece exatamente como é
+hoje: local-first, sem cadastro, sem rede. Quem baixa pode repassar o APK e ele
+funciona — isso é aceito conscientemente. Fazer o app validar licença quebraria
+as duas promessas que a landing page faz ("sem cadastro" e "nenhuma requisição
+de rede") e mataria o funcionamento offline no primeiro uso, que é a razão de o
+produto existir.
 
-Itens:
-- Backend `/v1/auth/login`, `/v1/auth/refresh`, `/v1/me/entitlement`.
-- Token em secure storage do SO — nunca `localStorage`.
-- Tela de login exibida apenas no canal `gated`.
-- Liberar o domínio da API em `connect-src` na CSP.
-
-### Fase 14 — Pagamento e entitlement
-
-**Compra única, sem assinatura** (decidido em 2026-08-27). O entitlement não
-vence: a única forma de perder acesso é estorno. Isso elimina a questão de
-"trancar o usuário fora dos próprios dados quando a assinatura vence", que era
-o ponto mais delicado do desenho local-first.
+Metade disso já existe no gateway (`gateway/src/index.js`): `PAID_APPS` lista os
+apps que exigem licença, o KV `LICENSES` guarda cada chave, e o cliente a envia
+em `x-license-key` ou `?license=`. As respostas `401 license_required` e
+`403 license_invalid | license_expired | license_other_app` já estão implementadas.
 
 Itens:
-- Escolher Stripe ou PIX. Sem recorrência, o PIX fica mais atraente (taxa ~4x menor); o custo é tornar a fase 14b obrigatória.
-- `entitlement` gravado apenas por **webhook** ou por **liberação manual no painel** (fase 14b) — nunca por chamada do cliente.
-- Estados: `ativo` / `pendente` / `revogado` / `ausente`, com campo `origin` (`webhook` | `manual`).
-- Tratar estorno: MED no PIX, contestação no cartão → `revogado`.
-- Modelo local-first confirmado: bypass do cliente é possível e aceito.
+- Criar o KV `LICENSES` e ligar `PAID_APPS = "contr0l"` no `wrangler.toml`.
+- Geração de chave: valor aleatório, gravado como `{app, status, expires}`.
+- Campo de chave na página de download, guardado em `localStorage` para não redigitar.
+- Formulário de e-mail no site, para saber a quem entregar a chave.
+- Envio de e-mail: o Cloudflare Email Routing só recebe. Resend tem plano gratuito de 3.000/mês e integra com Workers.
 
-### Fase 14b — Painel administrativo (obrigatória se o pagamento for PIX)
+**Não requer backend, banco ou contas.** Turso, login e sincronização ficam para
+a fase 17.
 
-Existe porque no PIX o dinheiro pode entrar sem o entitlement liberar: QR
-estático não notifica, e webhook de PSP pode falhar, chegar fora de ordem ou
-trazer valor/conta divergente. Sem esta tela, o usuário pagou e ficou travado, e
-o único caminho seria editar o banco à mão.
+### Fase 14 — Pagamento (PIX)
 
-Itens:
-- Fila de reconciliação: contas pendentes com pagamento recebido, e pagamentos sem conta identificada.
-- `POST /v1/admin/entitlement` com justificativa obrigatória e referência do pagamento.
-- Log de auditoria append-only (quem liberou, quando, qual pagamento, por quê).
-- Autenticação separada da conta de usuário comum + segundo fator; rotas `/v1/admin/*` isoladas e negadas por padrão.
-- Painel não servido junto da landing page pública.
-- Mora no site, não neste repositório: o app não precisa de nenhuma mudança.
-
-### Fase 15 — Dois APKs
+**Compra única, sem assinatura.** O acesso não vence; a única forma de perder é
+estorno (MED no PIX).
 
 Itens:
-- `VITE_DISTRIBUTION=gated` (site, com login) e `direct` (distribuição própria, sem login).
-- `applicationId` distinto por canal, se os dois precisarem coexistir no mesmo aparelho.
-- Dois artefatos no `deploy.toml`, hoje com apenas um bloco `[[artifact]]`.
+- QR PIX na página, com o e-mail do comprador coletado junto.
+- Confirmação manual enquanto não houver PSP com webhook.
+- Ao confirmar: gerar a chave, gravar no KV e enviar por e-mail.
+- Estorno: marcar a chave como `revoked` no KV — o gateway já recusa.
+
+### Fase 14b — Painel administrativo (obrigatório)
+
+Deixa de ser condicional: com PIX confirmado à mão, gerar chave e enviar e-mail
+**é o fluxo normal**, não a exceção.
+
+Itens:
+- Lista de pagamentos recebidos e chaves emitidas, com o e-mail de destino.
+- Emitir chave, reenviar e-mail, revogar chave.
+- Registro de quem emitiu, quando e para qual pagamento.
+- Autenticação separada e segundo fator: quem entra aqui distribui acesso pago de graça.
+- Mora no site, não neste repositório.
+
+### Fase 15 — ~~Dois APKs~~ (cancelada em 2026-08-28)
+
+Existia porque o app seria bloqueado por login, exigindo um build gratuito e um
+pago. Com a licença protegendo apenas o download, **há um único APK** — o mesmo
+para quem compra e para quem recebe de você.
+
+Isso torna obsoletos o `VITE_DISTRIBUTION` (`gated`/`direct`) em
+`src/lib/cloud/distribution.ts` e a regra `decideAccess()` em
+`src/features/auth/session.ts`, que decidia liberar telas conforme o canal. Os
+placeholders de autenticação continuam válidos, mas passam a pertencer à fase
+17: sincronizar dados na nuvem exige identidade, comprar não exige.
 
 ### Fase 15b — LGPD (bloqueia a cobrança do primeiro cliente)
 
-Ver seção 6 de [`docs/arquitetura-nuvem-e-distribuicao.md`](docs/arquitetura-nuvem-e-distribuicao.md).
-Hoje a exposição é zero porque nada sai do aparelho; a nuvem muda isso de patamar.
-
-**E2E aprovado em 2026-08-27.** Custo aceito: perdeu a senha, perdeu o backup —
-precisa estar visível no cadastro, não enterrado nos termos.
+**Escopo reduzido pela decisão de 2026-08-28.** Com a licença protegendo só o
+download, nenhum dado financeiro sai do aparelho e nada disso chega a um
+servidor seu. O que você passa a tratar é apenas **e-mail e chave de licença** —
+dado pessoal, mas de baixo risco, e o suficiente para as obrigações caírem de
+patamar. A discussão de criptografia ponta a ponta migra para a fase 17, junto
+com a sincronização que a torna necessária.
 
 Itens:
-- Esquema de envelope (seção 7 do doc): Argon2id com salts distintos para verificador de login e KEK; DEK aleatória cifrando o banco; DEK embrulhada pela KEK no servidor. Trocar senha re-embrulha a DEK, não re-cifra os dados.
-- Cripto em Rust (`argon2`, `chacha20poly1305`) dentro do `src-tauri` — nenhuma dependência de cripto existe hoje no `Cargo.toml`.
 - Base legal: execução de contrato (art. 7º), não consentimento.
-- Minimização: só email, `user_id` e referência de pagamento.
-- Endpoint real de eliminação de conta, junto com o de cadastro.
-- Transferência internacional (art. 33) se o backend for Cloudflare/Turso.
+- Minimização: guardar só e-mail, chave e referência do pagamento.
+- Eliminação: apagar e-mail e chave quando solicitado, mantendo o registro fiscal do pagamento, que tem base legal própria.
+- Transferência internacional (art. 33): o KV da Cloudflare e o provedor de e-mail ficam fora do Brasil.
 - Política de privacidade e termos antes do primeiro cadastro real.
 - Canal de contato do titular (art. 41; Resolução CD/ANPD nº 2/2022 simplifica DPO para pequeno porte).
 - Revisão por advogado antes de cobrar do primeiro cliente.
@@ -155,6 +166,12 @@ Itens:
 - Publicação via `deploy.toml` (já criado na raiz; `repo`, `gateway` e chaves ainda com placeholder).
 
 ### Fase 17 — Sincronização em nuvem
+
+Herda da fase 15b a discussão de **criptografia ponta a ponta**: é a
+sincronização que faz dados financeiros saírem do aparelho, e é aqui que a
+decisão passa a valer. Também é aqui que contas e identidade voltam a ser
+necessárias — os placeholders em `src/features/auth/` pertencem a esta fase,
+não à compra.
 
 **Turso/libSQL aprovado em 2026-08-27, com um ajuste:** o sync nativo do libSQL
 (embedded replica) opera no nível das linhas e exige que o servidor leia os
@@ -179,7 +196,7 @@ Itens:
 - **Banco dev antigo:** ao recriar o schema (ex.: durante migrações), o arquivo `.db` antigo deve ser apagado para que o plugin recrie com o schema atualizado incluindo `nature`/`status`.
 - **Testes de componente/UI** (opcional, não planejado): hoje a UI é verificada via typecheck + build + passada visual (vision). Não há infra de jsdom/testing-library. Considerar se a complexidade da UI justificar.
 
-### Fase 18 — iOS (bloqueada por pré-requisitos externos)
+### Fase 18 — iOS (fora de escopo, decidido em 2026-08-28)
 
 O Tauri 2 suporta iOS, mas nada disso pode ser feito na máquina atual: o
 subcomando `tauri ios` **não existe** no CLI em Windows — ele só é compilado em
@@ -204,7 +221,6 @@ Uma chave de licença comprada por fora e digitada no app é justamente o que a
 regra proíbe. Ou seja: adotar chave de licença no Android e publicar na App
 Store exige dois modelos de cobrança diferentes para o mesmo produto.
 
-Itens, quando houver Mac:
-- `tauri ios init` e ajuste do bundle identifier.
-- Certificados e perfis de provisionamento.
-- Reavaliar o modelo de cobrança para o iOS especificamente.
+**Fora de escopo.** Custa um Mac e US$ 99/ano antes da primeira linha de
+código, e a diretriz 3.1.1 obrigaria um segundo modelo de cobrança para o mesmo
+produto. Reavaliar apenas se o Android estiver vendendo e houver demanda real.
