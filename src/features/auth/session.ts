@@ -1,8 +1,14 @@
 import type { DistributionChannel } from "../../lib/cloud/distribution";
 import { requiresAuth } from "../../lib/cloud/distribution";
 
-/** Estado do pagamento, conforme respondido pelo backend. */
-export type EntitlementStatus = "ativo" | "pendente" | "expirado" | "ausente";
+/**
+ * Estado do pagamento, conforme respondido pelo backend.
+ *
+ * Compra unica (decidido em 2026-08-27): o entitlement nao vence, entao nao ha
+ * estado "expirado". "revogado" cobre estorno/chargeback -- no PIX via MED, no
+ * cartao via contestacao -- que sao a unica forma de um acesso pago ser perdido.
+ */
+export type EntitlementStatus = "ativo" | "pendente" | "revogado" | "ausente";
 
 export interface Session {
   user_id: string;
@@ -12,7 +18,10 @@ export interface Session {
    * NAO e autoridade: o backend revalida a cada requisicao de dados.
    */
   entitlement: EntitlementStatus;
-  /** ISO 8601. Depois disso a sessao precisa ser renovada. */
+  /**
+   * ISO 8601. Validade do TOKEN DE SESSAO, nao do entitlement -- a compra e
+   * vitalicia, mas o login ainda precisa ser renovado.
+   */
   expires_at: string;
 }
 

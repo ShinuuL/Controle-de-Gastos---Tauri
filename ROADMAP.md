@@ -86,13 +86,19 @@ Itens:
 
 ### Fase 14 — Pagamento e entitlement
 
-Itens:
-- Decidir Stripe (webhook nativo, recorrência) ou PIX (taxa menor, confirmação manual sem PSP).
-- `entitlement` gravado apenas por **webhook** ou por **liberação manual no painel** (fase 14b) — nunca por chamada do cliente.
-- Estados: `ativo` / `pendente` / `expirado` / `ausente`, com campo `origin` (`webhook` | `manual`).
-- Modelo local-first confirmado (2026-08-27): bypass do cliente é possível e aceito.
+**Compra única, sem assinatura** (decidido em 2026-08-27). O entitlement não
+vence: a única forma de perder acesso é estorno. Isso elimina a questão de
+"trancar o usuário fora dos próprios dados quando a assinatura vence", que era
+o ponto mais delicado do desenho local-first.
 
-### Fase 14b — Painel administrativo (necessária se o pagamento for PIX)
+Itens:
+- Escolher Stripe ou PIX. Sem recorrência, o PIX fica mais atraente (taxa ~4x menor); o custo é tornar a fase 14b obrigatória.
+- `entitlement` gravado apenas por **webhook** ou por **liberação manual no painel** (fase 14b) — nunca por chamada do cliente.
+- Estados: `ativo` / `pendente` / `revogado` / `ausente`, com campo `origin` (`webhook` | `manual`).
+- Tratar estorno: MED no PIX, contestação no cartão → `revogado`.
+- Modelo local-first confirmado: bypass do cliente é possível e aceito.
+
+### Fase 14b — Painel administrativo (obrigatória se o pagamento for PIX)
 
 Existe porque no PIX o dinheiro pode entrar sem o entitlement liberar: QR
 estático não notifica, e webhook de PSP pode falhar, chegar fora de ordem ou
@@ -114,6 +120,21 @@ Itens:
 - `applicationId` distinto por canal, se os dois precisarem coexistir no mesmo aparelho.
 - Dois artefatos no `deploy.toml`, hoje com apenas um bloco `[[artifact]]`.
 
+### Fase 15b — LGPD (bloqueia a cobrança do primeiro cliente)
+
+Ver seção 6 de [`docs/arquitetura-nuvem-e-distribuicao.md`](docs/arquitetura-nuvem-e-distribuicao.md).
+Hoje a exposição é zero porque nada sai do aparelho; a nuvem muda isso de patamar.
+
+Itens:
+- **Decidir criptografia ponta a ponta antes de escrever a sincronização.** Como a nuvem é só réplica, o servidor nunca precisa ler o conteúdo. Com E2E, um vazamento expõe blobs inúteis. Custo aceito: perdeu a senha, perdeu o backup — e isso precisa estar visível no cadastro.
+- Base legal: execução de contrato (art. 7º), não consentimento.
+- Minimização: só email, `user_id` e referência de pagamento.
+- Endpoint real de eliminação de conta, junto com o de cadastro.
+- Transferência internacional (art. 33) se o backend for Cloudflare/Turso.
+- Política de privacidade e termos antes do primeiro cadastro real.
+- Canal de contato do titular (art. 41; Resolução CD/ANPD nº 2/2022 simplifica DPO para pequeno porte).
+- Revisão por advogado antes de cobrar do primeiro cliente.
+
 ### Fase 16 — Landing page e release
 
 Itens:
@@ -126,7 +147,8 @@ Itens:
 Itens:
 - Modelo local-first: SQLite continua sendo a fonte de leitura, nuvem é réplica e restauração.
 - Sincronização por comandos Rust tipados, conforme AGENTS.md — não como segundo caminho de leitura no React.
-- Resolução de conflito e recuperação pós-reinstalação.
+- Recuperação pós-reinstalação.
+- **Modelo de resolução de conflito: adiado deliberadamente para esta fase** (decidido em 2026-08-27). Dois aparelhos editando offline na mesma conta é a parte mais cara do projeto, e desenhá-la antes de existir backend seria especular. Fica registrado como risco conhecido, não como esquecimento.
 
 ---
 

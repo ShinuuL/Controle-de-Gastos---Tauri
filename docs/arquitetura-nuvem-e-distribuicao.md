@@ -100,19 +100,35 @@ inútil, ao custo de o app não abrir sem internet.
 
 ---
 
-## 4. Pagamento: Stripe ou PIX
+## 4. Pagamento: compra única
+
+**Decidido (2026-08-27): compra única, sem assinatura.**
+
+Duas consequências diretas:
+
+1. **O entitlement não vence.** Não existe estado `expirado`, e a pergunta "o
+   que acontece quando a assinatura vence num app local-first" — que era o
+   problema mais espinhoso do desenho, porque implicaria trancar o usuário fora
+   dos próprios registros financeiros — simplesmente deixa de existir. O único
+   caminho para perder acesso é estorno, coberto pelo estado `revogado`.
+2. **A recorrência sai da comparação**, e com ela a maior vantagem do Stripe.
 
 | | Stripe | PIX (QR estático/dinâmico) |
 |---|---|---|
 | Confirmação | webhook automático | precisa de PSP com webhook, ou conferência manual |
-| Recorrência | nativa | manual |
+| ~~Recorrência~~ | ~~nativa~~ | ~~manual~~ — irrelevante em compra única |
 | Custo | ~4,4% + taxa fixa | ~1% ou menos |
 | Entrada em produção | conta + verificação | chave PIX já resolve o recebimento |
+| Estorno | contestação de cartão | MED (Mecanismo Especial de Devolução) |
 
 O ponto que decide: **entitlement automático exige webhook.** Um QR PIX estático
 recebe dinheiro mas não avisa ninguém — alguém teria que marcar o pagamento na
-mão. Para começar sem burocracia isso é viável (poucos usuários), mas não
-escala e não é o que o desenho acima assume.
+mão.
+
+Com compra única, o PIX fica bem mais atraente: pagamento é evento isolado, a
+taxa é ~4x menor e não há cobrança repetida para administrar. O custo é que
+**o painel administrativo (seção 5) deixa de ser opcional e vira obrigatório**,
+porque a reconciliação manual passa a ser parte do fluxo normal, não exceção.
 
 Em ambos os casos, o backend é o único que escreve `entitlement` — nunca a
 partir de uma chamada do cliente dizendo "eu paguei". As duas origens legítimas
@@ -182,7 +198,73 @@ não sabe se o estado veio de webhook ou de liberação manual — para ele, `at
 
 ---
 
-## 6. Pontos de integração que vão precisar mudar
+## 6. LGPD
+
+> **Não é parecer jurídico.** Sou engenharia, não advocacia, e "ter certeza" de
+> conformidade exige revisão de um advogado. O que está aqui é o desenho técnico
+> que sustenta a conformidade e a lista do que precisa existir — a validação
+> final é humana e profissional.
+
+Hoje a exposição é **zero**: nada sai do aparelho, e o `AGENTS.md` codifica isso
+("telemetria apenas em memória", "sem endpoint HTTP", "não registre dados
+financeiros pessoais"). A nuvem muda isso de patamar, e é aí que a lei entra.
+
+### A decisão que muda tudo: criptografia ponta a ponta
+
+Esta é a recomendação mais forte deste documento.
+
+O desenho já define a nuvem como **réplica e ponto de restauração**, não como
+fonte de consulta — o SQLite local é quem responde as leituras. Se é só réplica,
+o servidor nunca precisa **ler** o conteúdo. Então cifre no aparelho, com chave
+derivada da senha do usuário, e suba apenas o blob cifrado.
+
+O que isso muda perante a LGPD:
+
+| Sem E2E | Com E2E |
+|---|---|
+| Você é controlador de dados financeiros legíveis de todos os usuários | Você guarda blobs que não consegue ler |
+| Vazamento expõe as finanças de todo mundo | Vazamento expõe blobs inúteis |
+| Incidente exige notificar ANPD e titulares (art. 48) | Risco de dano concreto cai drasticamente |
+| Pedido de eliminação exige apagar dados espalhados | Apagar o blob resolve |
+
+O custo é real e precisa ser aceito conscientemente: **perdeu a senha, perdeu o
+backup.** Não há "recuperar conta" que devolva os dados, porque você não tem a
+chave. Isso precisa estar dito na cara do usuário no momento do cadastro, não
+enterrado nos termos.
+
+Como o app é local-first e a nuvem é só restauração, essa troca é boa: o custo
+aparece num cenário raro, o benefício vale todo dia.
+
+### O que a lei exige de qualquer forma
+
+| Obrigação | O que fazer aqui |
+|---|---|
+| **Base legal** (art. 7º) | Execução de contrato — o usuário comprou o app. É a base mais limpa; evita depender de consentimento, que pode ser revogado a qualquer momento |
+| **Finalidade e minimização** (art. 6º) | Guardar só email, `user_id` e referência do pagamento. Nada de telemetria de uso sem base própria |
+| **Direitos do titular** (art. 18) | Acesso, correção, **portabilidade** e **eliminação**. Exportar já é natural num app local-first; apagar precisa de endpoint real, não de e-mail para suporte |
+| **Eliminação de conta** | Apagar de fato o blob e o cadastro, com prazo declarado. Manter só o registro fiscal do pagamento, que tem base legal própria |
+| **Transferência internacional** (art. 33) | Cloudflare e Turso rodam fora do Brasil. Precisa de base para transferência internacional e de dizer isso na política |
+| **Incidente de segurança** (art. 48) | Procedimento escrito de notificação à ANPD e aos titulares |
+| **Encarregado (DPO)** (art. 41) | A Resolução CD/ANPD nº 2/2022 simplifica para agentes de pequeno porte, mas **canal de contato do titular continua obrigatório** |
+| **Política de privacidade e termos** | Precisam existir antes do primeiro cadastro real, não depois |
+
+Um esclarecimento que costuma gerar confusão: dado financeiro **não é "dado
+sensível"** no sentido do art. 5º, II — a lista é fechada (origem racial, convicção
+religiosa, opinião política, filiação sindical, saúde, vida sexual, genético,
+biométrico). Ou seja, não incide o regime especial. Mas continua sendo dado
+pessoal, e o risco reputacional de um vazamento de finanças pessoais é alto
+independentemente da classificação legal.
+
+### Ordem prática
+
+1. Decidir E2E **antes** de escrever a sincronização — refazer depois é caro.
+2. Política de privacidade e termos antes do primeiro cadastro real.
+3. Endpoint de eliminação de conta junto com o de cadastro, não depois.
+4. Revisão por advogado antes de cobrar do primeiro cliente.
+
+---
+
+## 7. Pontos de integração que vão precisar mudar
 
 | Onde | Situação hoje | Mudança necessária |
 |---|---|---|
@@ -194,7 +276,7 @@ não sabe se o estado veio de webhook ou de liberação manual — para ele, `at
 
 ---
 
-## 7. Placeholders já criados
+## 8. Placeholders já criados
 
 Inertes: nenhum faz chamada de rede, e o app continua funcionando como antes.
 

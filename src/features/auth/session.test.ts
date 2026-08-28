@@ -31,13 +31,13 @@ describe("decideAccess", () => {
   });
 
   it("exige pagamento quando o entitlement nao esta ativo", () => {
-    for (const e of ["pendente", "expirado", "ausente"] as const) {
+    for (const e of ["pendente", "revogado", "ausente"] as const) {
       expect(decideAccess({ channel: "gated", session: sessao({ entitlement: e }), now: AGORA }))
         .toEqual({ allowed: false, reason: "pagamento" });
     }
   });
 
-  it("bloqueia sessao expirada antes de olhar o pagamento", () => {
+  it("bloqueia sessao expirada antes de olhar o pagamento (token, nao compra)", () => {
     const s = sessao({ expires_at: "2026-08-01T00:00:00Z" });
     expect(decideAccess({ channel: "gated", session: s, now: AGORA }))
       .toEqual({ allowed: false, reason: "sessao-expirada" });
