@@ -178,3 +178,33 @@ Itens:
 - **`ExpensesScreen`** é legado: filtra `nature = 'saida' AND status = 'realizado'`. A tela de Movimentações (`TransactionsScreen`) cobre o mesmo escopo com mais funcionalidade.
 - **Banco dev antigo:** ao recriar o schema (ex.: durante migrações), o arquivo `.db` antigo deve ser apagado para que o plugin recrie com o schema atualizado incluindo `nature`/`status`.
 - **Testes de componente/UI** (opcional, não planejado): hoje a UI é verificada via typecheck + build + passada visual (vision). Não há infra de jsdom/testing-library. Considerar se a complexidade da UI justificar.
+
+### Fase 18 — iOS (bloqueada por pré-requisitos externos)
+
+O Tauri 2 suporta iOS, mas nada disso pode ser feito na máquina atual: o
+subcomando `tauri ios` **não existe** no CLI em Windows — ele só é compilado em
+macOS. Verificado em 2026-08-28.
+
+Pré-requisitos que não dependem de código:
+
+| Requisito | Detalhe |
+|---|---|
+| Mac com Xcode | Compilar para iOS exige macOS. Não há alternativa suportada. |
+| Apple Developer Program | US$ 99/ano, renovação anual. |
+| Revisão da App Store | Cada versão passa por análise humana. |
+
+**O modelo de distribuição não se transfere.** iOS não permite instalar um
+arquivo baixado de um site, como o APK. As saídas reais são App Store,
+TestFlight (limitado a 90 dias por build) ou ad-hoc (100 aparelhos/ano, UDIDs
+registrados). A landing page não consegue servir iOS como serve Android.
+
+**Conflito com o modelo de cobrança.** A diretriz 3.1.1 da App Store exige que
+desbloqueio de conteúdo digital use compra dentro do app, com comissão da Apple.
+Uma chave de licença comprada por fora e digitada no app é justamente o que a
+regra proíbe. Ou seja: adotar chave de licença no Android e publicar na App
+Store exige dois modelos de cobrança diferentes para o mesmo produto.
+
+Itens, quando houver Mac:
+- `tauri ios init` e ajuste do bundle identifier.
+- Certificados e perfis de provisionamento.
+- Reavaliar o modelo de cobrança para o iOS especificamente.
