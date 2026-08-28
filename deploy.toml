@@ -1,7 +1,7 @@
 # Configuracao de deploy deste projeto (deploy-base)
 [deploy]
-app         = "controle-de-gastos"   # id do app: minusculas, sem espacos
-repo        = "ShinuuL/releases"     # repo privado que guarda as releases -- CONFIRMAR
+app         = "contr0l"              # id do app: minusculas, sem espacos; vira prefixo da tag
+repo        = "ShinuuL/Releases"     # repo privado que guarda as releases de todos os apps
 gateway     = "https://updates.exemplo.com.br"  # URL publica do Worker -- PREENCHER
 channel     = "stable"               # stable | beta
 private_key = 'C:/chaves/deploy-base.pem'       # PEM de assinatura -- FORA do repo
