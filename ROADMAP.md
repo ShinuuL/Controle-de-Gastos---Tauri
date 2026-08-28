@@ -81,7 +81,7 @@ rodou e após reiniciar o app voltou ao normal com os dados preservados.
 **Regra permanente:** migração aplicada nunca é editada, só nova versão. Editar
 a v1 depois de distribuída foi a causa desta fase inteira.
 
-### Fase 13 — Chave de licença no download (decidido em 2026-08-28)
+### Fase 13 — Chave de licença no download (✅ concluída em 2026-08-28)
 
 **A chave protege o download, não o app.** O app permanece exatamente como é
 hoje: local-first, sem cadastro, sem rede. Quem baixa pode repassar o APK e ele
@@ -95,12 +95,22 @@ apps que exigem licença, o KV `LICENSES` guarda cada chave, e o cliente a envia
 em `x-license-key` ou `?license=`. As respostas `401 license_required` e
 `403 license_invalid | license_expired | license_other_app` já estão implementadas.
 
-Itens:
-- Criar o KV `LICENSES` e ligar `PAID_APPS = "contr0l"` no `wrangler.toml`.
-- Geração de chave: valor aleatório, gravado como `{app, status, expires}`.
-- Campo de chave na página de download, guardado em `localStorage` para não redigitar.
-- Formulário de e-mail no site, para saber a quem entregar a chave.
-- Envio de e-mail: o Cloudflare Email Routing só recebe. Resend tem plano gratuito de 3.000/mês e integra com Workers.
+Entregue:
+- KV `LICENSES` criado e `PAID_APPS = "contr0l"` ligado. O download passou a exigir chave.
+- Rotas `/v1/admin/licencas` no gateway: emitir, listar e revogar, protegidas pelo segredo `ADMIN_TOKEN` com comparação de tempo constante.
+- Chave em alfabeto sem `I`, `O`, `0` e `1`, porque é ditada e digitada por pessoas.
+- Revogar marca `status: "revoked"` em vez de apagar: preserva o registro de que a chave existiu e para quem foi.
+- Campo de chave na página, guardado em `localStorage`, e aceitação por `?license=` para você mandar um link pronto no WhatsApp — a chave some da barra de endereços depois de aplicada.
+- `portal/admin.html`: painel local para emitir, listar e revogar.
+
+Verificado de ponta a ponta: sem chave `401`, chave inválida `403 license_invalid`,
+chave revogada `403 license_revoked`, chave válida libera manifesto e download.
+
+**Envio de e-mail ficou fora.** O `onboarding@resend.dev` só entrega no e-mail da
+própria conta Resend, então a API key existente não serve sem domínio verificado
+(`.com.br` custa R$ 40/ano no Registro.br). A API oficial do WhatsApp foi
+descartada: exige conta Meta Business com CNPJ, número dedicado e templates
+aprovados. Entrega manual por WhatsApp resolve no volume atual.
 
 **Não requer backend, banco ou contas.** Turso, login e sincronização ficam para
 a fase 17.

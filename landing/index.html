@@ -112,8 +112,24 @@ a{color:inherit}
 .baixar:focus-visible{outline:3px solid var(--marca);outline-offset:3px}
 
 .recibo__linhas{margin-top:1rem;border-top:1px dashed var(--linha);padding-top:.85rem}
-.recibo__nota{margin-top:.85rem;font-size:.82rem;color:var(--tinta-suave)}
-.recibo__nota a{color:var(--marca);text-decoration:underline;text-underline-offset:2px}
+.chave{margin-top:.9rem;border-top:1px dashed var(--linha);padding-top:.85rem}
+.chave label{display:block;font-size:.78rem;color:var(--tinta-suave);margin-bottom:.35rem}
+.chave__campo{display:flex;gap:.5rem}
+.chave input{
+  flex:1;min-width:0;padding:.5rem .6rem;
+  border:1px solid var(--linha);border-radius:.4rem;background:#fff;
+  font-family:var(--mono);font-size:.85rem;letter-spacing:.04em;text-transform:uppercase;
+}
+.chave input:focus-visible{outline:2px solid var(--marca);outline-offset:1px}
+.chave__campo button{
+  border:1px solid var(--tinta);background:var(--tinta);color:#fff;
+  border-radius:.4rem;padding:0 .85rem;font:600 .85rem/1 var(--sans);cursor:pointer;
+}
+.chave__campo button:focus-visible{outline:2px solid var(--marca);outline-offset:2px}
+.chave__ajuda{margin-top:.5rem;font-size:.78rem;color:var(--tinta-suave)}
+.chave__ajuda a{color:var(--marca);text-decoration:underline;text-underline-offset:2px}
+.chave__ajuda[data-estado="erro"]{color:#b91c1c}
+.chave__ajuda[data-estado="ok"]{color:var(--credito)}
 .rec{
   display:grid;grid-template-columns:auto 1fr;gap:.75rem;
   align-items:baseline;
@@ -315,9 +331,17 @@ a{color:inherit}
           <div class="rec"><dt>tamanho</dt><dd id="t">66,4 MB</dd></div>
           <div class="rec"><dt>requer</dt><dd>Android 7.0 ou superior</dd></div>
         </dl>
-        <p class="recibo__nota">
-          Gratuito, sem anúncios. <a href="#specs">Especificações e verificação</a>
-        </p>
+        <div class="chave">
+          <label for="lic">Chave de licença</label>
+          <div class="chave__campo">
+            <input id="lic" inputmode="text" autocomplete="off" spellcheck="false"
+                   placeholder="XXXX-XXXX-XXXX-XXXX" aria-describedby="lic-ajuda">
+            <button type="button" id="lic-ok">Liberar</button>
+          </div>
+          <p class="chave__ajuda" id="lic-ajuda">
+            Recebeu a chave depois da compra. <a href="#specs">Especificações e verificação</a>
+          </p>
+        </div>
       </div>
     </div>
 
@@ -614,29 +638,97 @@ a{color:inherit}
 /* O recibo e preenchido a partir do manifesto assinado servido pelo gateway,
    para que versao, tamanho e hash nunca fiquem desatualizados nesta pagina.
    Os valores no HTML sao o ultimo estado conhecido: se a rede falhar, a pagina
-   continua correta e o download continua funcionando. */
-(async () => {
-  const GATEWAY = "https://updates-gateway.sofaltaumaletr.workers.dev";
-  const mb = (b) => (b / 1048576).toFixed(1).replace(".", ",") + " MB";
-  try {
-    const r = await fetch(`${GATEWAY}/v1/apps/contr0l/latest?channel=stable`);
-    if (!r.ok) return;
-    const { manifest, signature } = await r.json();
-    const a = manifest.artifacts.find((x) => x.kind === "apk");
-    if (!a) return;
-    const põe = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
-    põe("v", manifest.version);
-    põe("v2", manifest.version);
-    põe("t", mb(a.size));
-    põe("t2", mb(a.size));
-    põe("h2", a.sha256);
-    põe("s2", `${signature.alg} · ${signature.key_id}`);
-    document.getElementById("lnk").href = a.url;
-    document.querySelectorAll("[data-arquivo]").forEach((el) => { el.textContent = a.filename; });
-  } catch {
-    /* offline ou gateway fora: o estado embutido no HTML permanece valido */
+   continua correta.
+
+   O download exige chave de licenca. A chave fica em localStorage para nao ser
+   redigitada -- ela nao e segredo forte, so evita atrito para quem ja comprou. */
+const GATEWAY = "https://updates-gateway.sofaltaumaletr.workers.dev";
+const GUARDA = "contr0l:licenca";
+
+const $ = (id) => document.getElementById(id);
+const mb = (b) => (b / 1048576).toFixed(1).replace(".", ",") + " MB";
+
+function guardada() {
+  try { return localStorage.getItem(GUARDA) || ""; } catch { return ""; }
+}
+function guardar(chave) {
+  try { localStorage.setItem(GUARDA, chave); } catch { /* modo privado */ }
+}
+
+function ajuda(texto, estado) {
+  const el = $("lic-ajuda");
+  el.textContent = texto;
+  if (estado) el.dataset.estado = estado; else delete el.dataset.estado;
+}
+
+/** Le o manifesto e, se a chave servir, libera o botao de download. */
+async function carregar(chave) {
+  const q = chave ? `&license=${encodeURIComponent(chave)}` : "";
+  const r = await fetch(`${GATEWAY}/v1/apps/contr0l/latest?channel=stable${q}`);
+
+  if (r.status === 401) return { estado: "sem-chave" };
+  if (r.status === 403) {
+    const { error } = await r.json().catch(() => ({}));
+    return { estado: "recusada", motivo: error };
   }
-})();
+  if (!r.ok) return { estado: "indisponivel" };
+
+  const { manifest, signature } = await r.json();
+  const a = manifest.artifacts.find((x) => x.kind === "apk");
+  if (!a) return { estado: "indisponivel" };
+
+  const poe = (id, txt) => { const el = $(id); if (el) el.textContent = txt; };
+  poe("v", manifest.version);
+  poe("v2", manifest.version);
+  poe("t", mb(a.size));
+  poe("t2", mb(a.size));
+  poe("h2", a.sha256);
+  poe("s2", `${signature.alg} · ${signature.key_id}`);
+  document.querySelectorAll("[data-arquivo]").forEach((el) => { el.textContent = a.filename; });
+  $("lnk").href = chave ? `${a.url}?license=${encodeURIComponent(chave)}` : a.url;
+  return { estado: "liberado" };
+}
+
+const MOTIVOS = {
+  license_invalid: "Chave não encontrada. Confira se digitou certo.",
+  license_revoked: "Esta chave foi revogada. Fale comigo para regularizar.",
+  license_expired: "Esta chave expirou.",
+  license_other_app: "Esta chave é de outro aplicativo.",
+};
+
+async function aplicar(chave, { salvar = false } = {}) {
+  const r = await carregar(chave);
+  if (r.estado === "liberado") {
+    if (salvar) guardar(chave);
+    ajuda("Chave aceita. O download está liberado.", "ok");
+  } else if (r.estado === "sem-chave") {
+    ajuda("Informe a chave que você recebeu depois da compra.");
+  } else if (r.estado === "recusada") {
+    ajuda(MOTIVOS[r.motivo] || "Chave recusada.", "erro");
+  } else {
+    ajuda("Não foi possível falar com o servidor agora. Tente de novo em instantes.", "erro");
+  }
+}
+
+$("lic-ok").addEventListener("click", () => {
+  const chave = $("lic").value.trim().toUpperCase();
+  if (!chave) return ajuda("Digite a chave.", "erro");
+  ajuda("Verificando…");
+  aplicar(chave, { salvar: true });
+});
+$("lic").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") $("lic-ok").click();
+});
+
+/* A chave pode vir na URL (?license=...), para voce mandar um link pronto em
+   vez de pedir para a pessoa digitar. Depois de aplicada, some da barra de
+   enderecos: evita que ela seja compartilhada sem querer junto com o link. */
+const naUrl = new URLSearchParams(location.search).get("license");
+const salva = naUrl ? naUrl.trim().toUpperCase() : guardada();
+if (salva) $("lic").value = salva;
+aplicar(salva, { salvar: Boolean(naUrl) }).then(() => {
+  if (naUrl) history.replaceState(null, "", location.pathname + location.hash);
+});
 </script>
 </body>
 </html>
