@@ -2,10 +2,10 @@
 [deploy]
 app         = "contr0l"              # id do app: minusculas, sem espacos; vira prefixo da tag
 repo        = "ShinuuL/Releases"     # repo privado que guarda as releases de todos os apps
-gateway     = "https://updates.exemplo.com.br"  # URL publica do Worker -- PREENCHER
+gateway     = "https://updates-gateway.sofaltaumaletr.workers.dev"  # URL publica do Worker
 channel     = "stable"               # stable | beta
 private_key = 'C:/chaves/deploy-base.pem'       # PEM de assinatura -- FORA do repo
-public_key  = "PREENCHA_COM_deploy-base_keygen" # hex, embutido no cliente e no portal
+public_key  = "104c81a81b05108f914c50d091cd184a210eae57528e20298d8835344b740045" # hex (Ed25519, publica -- pode versionar)
 
 # APK Android universal, gerado por `npx tauri android build --apk`.
 # O publish versiona o nome do arquivo automaticamente (app-universal-release-0.2.7.apk).

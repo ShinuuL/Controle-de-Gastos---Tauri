@@ -74,8 +74,9 @@ Entregue:
 - `src/features/recovery/DatabaseRecoveryScreen.tsx` + portão de boot no `App.tsx`.
 - 7 testes Rust e 5 TS, incluindo o cenário da população quebrada de ponta a ponta.
 
-Pendente de verificação: nada disso foi executado em aparelho real com um banco
-de verdade da população B — só em SQLite em memória.
+**Validado em aparelho real (2026-08-27):** instalado por cima de um aparelho da
+população B, o app abriu na tela de reparo em vez de morrer no boot, o reparo
+rodou e após reiniciar o app voltou ao normal com os dados preservados.
 
 **Regra permanente:** migração aplicada nunca é editada, só nova versão. Editar
 a v1 depois de distribuída foi a causa desta fase inteira.
