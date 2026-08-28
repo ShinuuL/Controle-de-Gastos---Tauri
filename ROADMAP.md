@@ -106,6 +106,13 @@ Entregue:
 Verificado de ponta a ponta: sem chave `401`, chave inválida `403 license_invalid`,
 chave revogada `403 license_revoked`, chave válida libera manifesto e download.
 
+**`PAID_APPS` está vazio desde 2026-08-28**, ou seja, o bloqueio está desligado.
+Ficou ligado por pouco tempo e isso deixou a página num estado sem saída: não
+entregava o APK e também não vendia, porque o PIX ainda não existe. Religar é
+devolver `PAID_APPS = "contr0l"` e rodar `wrangler deploy`; o KV, as chaves já
+emitidas e as rotas de administração seguem funcionando enquanto isso.
+A página se adapta sozinha: o campo de chave só aparece quando o gateway exige uma.
+
 **Envio de e-mail ficou fora.** O `onboarding@resend.dev` só entrega no e-mail da
 própria conta Resend, então a API key existente não serve sem domínio verificado
 (`.com.br` custa R$ 40/ano no Registro.br). A API oficial do WhatsApp foi

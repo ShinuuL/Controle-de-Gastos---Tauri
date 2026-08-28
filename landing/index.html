@@ -699,6 +699,14 @@ const MOTIVOS = {
 async function aplicar(chave, { salvar = false } = {}) {
   const r = await carregar(chave);
   if (r.estado === "liberado") {
+    // Sem chave e liberado significa que este app nao exige licenca agora.
+    // O campo entao nao tem funcao nenhuma, e some -- em vez de dizer
+    // "chave aceita" para quem nao digitou nada. Volta sozinho no dia em que
+    // PAID_APPS incluir o app de novo.
+    if (!chave) {
+      document.querySelector(".chave").hidden = true;
+      return;
+    }
     if (salvar) guardar(chave);
     ajuda("Chave aceita. O download está liberado.", "ok");
   } else if (r.estado === "sem-chave") {
