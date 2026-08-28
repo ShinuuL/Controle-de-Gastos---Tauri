@@ -50,15 +50,17 @@ function SummaryCard({
 export function DashboardSummaryCards({
   realizedCents,
   projectedCents,
+  incomeCents,
   strawberry,
 }: {
   realizedCents: number;
   projectedCents: number;
+  incomeCents: number;
   strawberry: boolean;
 }) {
   return (
     <div
-      className={`grid gap-3 ${strawberry ? "xl:grid-cols-[1.05fr_repeat(2,minmax(0,1fr))]" : "sm:grid-cols-2"}`}
+      className={`grid gap-3 ${strawberry ? "xl:grid-cols-[1.05fr_repeat(3,minmax(0,1fr))]" : "sm:grid-cols-2 lg:grid-cols-3"}`}
     >
       {strawberry && <BalanceMoodCard realizedCents={realizedCents} />}
       <SummaryCard
@@ -73,6 +75,13 @@ export function DashboardSummaryCards({
         cents={projectedCents}
         mascot={strawberry ? STRAWBERRY_DECORATIVE_ASSETS.pupcake : undefined}
         ariaLabel="Projeção do mês"
+      />
+      <SummaryCard
+        title="Entradas"
+        description="Tudo que entrou no mês, previstas incluídas."
+        cents={incomeCents}
+        mascot={strawberry ? STRAWBERRY_DECORATIVE_ASSETS.entradas : undefined}
+        ariaLabel="Entradas do mês"
       />
     </div>
   );

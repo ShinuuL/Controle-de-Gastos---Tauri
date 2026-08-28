@@ -119,6 +119,7 @@ export default function DashboardScreen() {
           <DashboardSummaryCards
             realizedCents={summary.realized_cents}
             projectedCents={summary.projected_cents}
+            incomeCents={summary.income_cents}
             strawberry={resolvedTheme === "strawberry"}
           />
 
