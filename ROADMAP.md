@@ -126,24 +126,28 @@ a fase 17.
 
 Ordem sugerida. Os dois primeiros itens destravam a release; o resto é a venda.
 
-**1. Arte do totalizador de entradas** — único item que só você pode fazer.
-Salve a imagem como `src/assets/moranguinho/entradas.png` (aceita também `.jpg`,
-`.webp`, `.avif` ou `.svg`). **Não é preciso editar código:** o asset é
-resolvido por padrão de nome via `import.meta.glob` em
-`src/features/theme/strawberryAssets.ts`. Sem o arquivo o card aparece sem
-mascote e o build passa; com ele, o mascote entra sozinho.
+**1. ~~Arte do totalizador de entradas~~** — concluída em 2026-08-28. O JPEG
+entregue tinha fundo preto gravado; o recorte preservou os contornos do desenho
+e a arte foi reduzida a 600px (293 KB).
 
-**2. Gerar a atualização 0.3.0** — depois do item 1, porque é a arte que
-justifica a versão:
+**2. Publicar a 0.3.0** — o APK já está compilado e assinado em
+`dist-android/contr0l.apk`:
+
+| | |
+|---|---|
+| versionName / Code | 0.3.0 / 3000 |
+| sha256 | `55550123a24df68a8e764901d99c4788c92bd7fad9b92a9833fcd85ce82949be` |
+| Tamanho | 70.977.009 bytes |
+
+Falta apenas publicar:
 
 ```
-npm run android:release
 cd ../../deploy-base
 .\.venv\Scripts\python.exe -m deploybase.cli publish 0.3.0 --dry-run --config "<caminho>/deploy.toml"
 ```
 
-Conferir o dry-run (sha256, `contr0l-0.3.0.apk`, assinatura) e então publicar
-sem `--dry-run`. A versão no `tauri.conf.json` já está em 0.3.0.
+Conferir o dry-run (sha256 acima, `contr0l-0.3.0.apk`, assinatura) e repetir sem
+`--dry-run`.
 
 **3. QR PIX e formulário na página** — é o que falta para religar o bloqueio com
 sentido. Hoje `PAID_APPS` está vazio de propósito (ver fase 13).
