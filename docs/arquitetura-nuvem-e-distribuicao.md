@@ -100,19 +100,35 @@ inútil, ao custo de o app não abrir sem internet.
 
 ---
 
-## 4. Pagamento: Stripe ou PIX
+## 4. Pagamento: compra única
+
+**Decidido (2026-08-27): compra única, sem assinatura.**
+
+Duas consequências diretas:
+
+1. **O entitlement não vence.** Não existe estado `expirado`, e a pergunta "o
+   que acontece quando a assinatura vence num app local-first" — que era o
+   problema mais espinhoso do desenho, porque implicaria trancar o usuário fora
+   dos próprios registros financeiros — simplesmente deixa de existir. O único
+   caminho para perder acesso é estorno, coberto pelo estado `revogado`.
+2. **A recorrência sai da comparação**, e com ela a maior vantagem do Stripe.
 
 | | Stripe | PIX (QR estático/dinâmico) |
 |---|---|---|
 | Confirmação | webhook automático | precisa de PSP com webhook, ou conferência manual |
-| Recorrência | nativa | manual |
+| ~~Recorrência~~ | ~~nativa~~ | ~~manual~~ — irrelevante em compra única |
 | Custo | ~4,4% + taxa fixa | ~1% ou menos |
 | Entrada em produção | conta + verificação | chave PIX já resolve o recebimento |
+| Estorno | contestação de cartão | MED (Mecanismo Especial de Devolução) |
 
 O ponto que decide: **entitlement automático exige webhook.** Um QR PIX estático
 recebe dinheiro mas não avisa ninguém — alguém teria que marcar o pagamento na
-mão. Para começar sem burocracia isso é viável (poucos usuários), mas não
-escala e não é o que o desenho acima assume.
+mão.
+
+Com compra única, o PIX fica bem mais atraente: pagamento é evento isolado, a
+taxa é ~4x menor e não há cobrança repetida para administrar. O custo é que
+**o painel administrativo (seção 5) deixa de ser opcional e vira obrigatório**,
+porque a reconciliação manual passa a ser parte do fluxo normal, não exceção.
 
 Em ambos os casos, o backend é o único que escreve `entitlement` — nunca a
 partir de uma chamada do cliente dizendo "eu paguei". As duas origens legítimas
@@ -182,7 +198,159 @@ não sabe se o estado veio de webhook ou de liberação manual — para ele, `at
 
 ---
 
-## 6. Pontos de integração que vão precisar mudar
+## 6. LGPD
+
+> **Não é parecer jurídico.** Sou engenharia, não advocacia, e "ter certeza" de
+> conformidade exige revisão de um advogado. O que está aqui é o desenho técnico
+> que sustenta a conformidade e a lista do que precisa existir — a validação
+> final é humana e profissional.
+
+Hoje a exposição é **zero**: nada sai do aparelho, e o `AGENTS.md` codifica isso
+("telemetria apenas em memória", "sem endpoint HTTP", "não registre dados
+financeiros pessoais"). A nuvem muda isso de patamar, e é aí que a lei entra.
+
+### A decisão que muda tudo: criptografia ponta a ponta
+
+Esta é a recomendação mais forte deste documento.
+
+O desenho já define a nuvem como **réplica e ponto de restauração**, não como
+fonte de consulta — o SQLite local é quem responde as leituras. Se é só réplica,
+o servidor nunca precisa **ler** o conteúdo. Então cifre no aparelho, com chave
+derivada da senha do usuário, e suba apenas o blob cifrado.
+
+O que isso muda perante a LGPD:
+
+| Sem E2E | Com E2E |
+|---|---|
+| Você é controlador de dados financeiros legíveis de todos os usuários | Você guarda blobs que não consegue ler |
+| Vazamento expõe as finanças de todo mundo | Vazamento expõe blobs inúteis |
+| Incidente exige notificar ANPD e titulares (art. 48) | Risco de dano concreto cai drasticamente |
+| Pedido de eliminação exige apagar dados espalhados | Apagar o blob resolve |
+
+O custo é real e precisa ser aceito conscientemente: **perdeu a senha, perdeu o
+backup.** Não há "recuperar conta" que devolva os dados, porque você não tem a
+chave. Isso precisa estar dito na cara do usuário no momento do cadastro, não
+enterrado nos termos.
+
+Como o app é local-first e a nuvem é só restauração, essa troca é boa: o custo
+aparece num cenário raro, o benefício vale todo dia.
+
+### O que a lei exige de qualquer forma
+
+| Obrigação | O que fazer aqui |
+|---|---|
+| **Base legal** (art. 7º) | Execução de contrato — o usuário comprou o app. É a base mais limpa; evita depender de consentimento, que pode ser revogado a qualquer momento |
+| **Finalidade e minimização** (art. 6º) | Guardar só email, `user_id` e referência do pagamento. Nada de telemetria de uso sem base própria |
+| **Direitos do titular** (art. 18) | Acesso, correção, **portabilidade** e **eliminação**. Exportar já é natural num app local-first; apagar precisa de endpoint real, não de e-mail para suporte |
+| **Eliminação de conta** | Apagar de fato o blob e o cadastro, com prazo declarado. Manter só o registro fiscal do pagamento, que tem base legal própria |
+| **Transferência internacional** (art. 33) | Cloudflare e Turso rodam fora do Brasil. Precisa de base para transferência internacional e de dizer isso na política |
+| **Incidente de segurança** (art. 48) | Procedimento escrito de notificação à ANPD e aos titulares |
+| **Encarregado (DPO)** (art. 41) | A Resolução CD/ANPD nº 2/2022 simplifica para agentes de pequeno porte, mas **canal de contato do titular continua obrigatório** |
+| **Política de privacidade e termos** | Precisam existir antes do primeiro cadastro real, não depois |
+
+Um esclarecimento que costuma gerar confusão: dado financeiro **não é "dado
+sensível"** no sentido do art. 5º, II — a lista é fechada (origem racial, convicção
+religiosa, opinião política, filiação sindical, saúde, vida sexual, genético,
+biométrico). Ou seja, não incide o regime especial. Mas continua sendo dado
+pessoal, e o risco reputacional de um vazamento de finanças pessoais é alto
+independentemente da classificação legal.
+
+### Ordem prática
+
+1. Decidir E2E **antes** de escrever a sincronização — refazer depois é caro.
+2. Política de privacidade e termos antes do primeiro cadastro real.
+3. Endpoint de eliminação de conta junto com o de cadastro, não depois.
+4. Revisão por advogado antes de cobrar do primeiro cliente.
+
+---
+
+## 7. Stack e criptografia
+
+Decidido em 2026-08-27: **Turso/libSQL + criptografia ponta a ponta.** Esta
+seção existe porque as duas decisões, juntas, exigem um ajuste que não é óbvio.
+
+### A tensão entre E2E e o sync nativo do libSQL
+
+O apelo original do Turso era a *embedded replica*: o libSQL sincroniza banco
+local com banco remoto sozinho, o que casaria perfeitamente com local-first.
+
+Só que essa sincronização opera **no nível das linhas** — o servidor precisa
+entender os dados para replicá-los. Com E2E o servidor não pode ler nada. As
+duas escolhas se atropelam, e é preciso escolher onde ceder:
+
+| Opção | Como fica | Veredito |
+|---|---|---|
+| **(a) Blob cifrado** | O `.db` inteiro é cifrado no aparelho e sobe como arquivo opaco | **Escolhida.** Simples, E2E de verdade, e cabe no papel de "réplica e restauração" que o desenho já dava à nuvem |
+| (b) Sync nativo do libSQL | Replicação automática, servidor lê tudo | Descartada: anula a decisão de E2E |
+| (c) Cifrar coluna a coluna | Sync funciona, mas vazam metadados (quantidade de lançamentos, datas, valores por tamanho) e nenhuma query server-side funciona | Descartada: complexidade alta para E2E parcial |
+
+**Consequência prática:** o dado do usuário deixa de ser "um banco na nuvem" e
+vira "um arquivo cifrado versionado". Isso quer dizer:
+
+- Os dados cifrados vão para **object storage** (Cloudflare R2 ou S3), não para o Turso.
+- O **Turso guarda o control plane**: contas, entitlements, pagamentos, log de auditoria do painel. Aqui o SQL é usado de verdade, e é onde o Turso rende.
+- Sincronizar é *upload/download de arquivo*, não merge de linhas — o que também explica por que resolução de conflito (fase 17) é difícil: sem merge no servidor, dois aparelhos editando offline geram duas versões inteiras do arquivo.
+
+### Esquema de chaves
+
+O ponto perigoso: a mesma senha serve para **entrar na conta** e para **decifrar
+os dados**. Se isso for feito de forma ingênua, o servidor acaba recebendo a
+chave e o E2E vira teatro. O padrão que evita isso é envelope com duas
+derivações independentes:
+
+```
+  senha do usuario
+        │
+        ├── Argon2id(senha, salt_auth)  ──▶ verificador ──▶ vai para o servidor
+        │                                    (serve so para login)
+        │
+        └── Argon2id(senha, salt_kek)   ──▶ KEK ──▶ NUNCA sai do aparelho
+                                              │
+                                              ▼
+                                      decifra a DEK guardada
+                                              │
+   DEK aleatoria (256 bits, gerada no aparelho) ──▶ cifra o .db
+```
+
+- **Verificador** e **KEK** saem da mesma senha, mas com *salts* diferentes: quem tem o verificador não consegue chegar na KEK.
+- A **DEK** é aleatória e cifra os dados. O servidor guarda a DEK **embrulhada** pela KEK — inútil sem a senha.
+- **Trocar a senha não re-cifra nada:** deriva a KEK nova e re-embrulha a DEK. Sem esse passo, trocar senha significaria baixar, decifrar e re-cifrar o banco inteiro.
+
+Primitivas: **Argon2id** para derivação (resistente a GPU, ao contrário de
+PBKDF2/SHA) e **XChaCha20-Poly1305** para cifrar (AEAD, nonce grande o
+suficiente para sortear sem medo de colisão).
+
+### Onde o código de cripto mora
+
+**No Rust**, dentro do `src-tauri`. Três razões:
+
+1. O `AGENTS.md` já manda a nuvem passar por comandos Rust tipados, não por fetch no React. A cripto entra no mesmo caminho.
+2. As crates `argon2` e `chacha20poly1305` são maduras e auditadas; o equivalente em JS na webview é mais fácil de errar.
+3. Mantém chave e senha fora do heap do JavaScript.
+
+Nenhuma dependência de cripto existe ainda no `Cargo.toml` — entram na fase 15b.
+
+### Linguagem do backend: TypeScript
+
+Recomendação, não decisão sua ainda — você pode vetar.
+
+O backend com E2E é **pequeno**: guarda blob, autentica, recebe webhook de
+pagamento, serve o painel. Não há lógica sobre os dados do usuário, porque o
+servidor não consegue lê-los. Para esse tamanho, o que mais pesa é você já
+escrever TypeScript neste projeto — a landing page e o painel são web de
+qualquer jeito, o SDK `@libsql/client` é first-class, e o R2 é do mesmo
+ecossistema Cloudflare que o deploy-base já usa.
+
+Rust no servidor traria consistência com o `src-tauri`, mas custa uma segunda
+curva de aprendizado onde não há ganho: não existe lógica pesada para proteger.
+
+> Uma coisa a decidir com atenção depois: **onde os dados ficam fisicamente.**
+> Cloudflare e Turso rodam fora do Brasil, o que aciona transferência
+> internacional (art. 33, seção 6). O R2 permite escolher a região.
+
+---
+
+## 8. Pontos de integração que vão precisar mudar
 
 | Onde | Situação hoje | Mudança necessária |
 |---|---|---|
@@ -194,7 +362,7 @@ não sabe se o estado veio de webhook ou de liberação manual — para ele, `at
 
 ---
 
-## 7. Placeholders já criados
+## 9. Placeholders já criados
 
 Inertes: nenhum faz chamada de rede, e o app continua funcionando como antes.
 

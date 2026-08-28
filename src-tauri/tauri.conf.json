@@ -1,13 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "controle-de-gastos",
-  "version": "0.2.7",
+  "productName": "Contr0l",
+  "version": "0.2.9",
   "identifier": "com.controle-gastos.app",
-  "plugins": {
-    "sql": {
-      "preload": ["sqlite:controle-de-gastos.db"]
-    }
-  },
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -17,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Controle de Gastos",
+        "title": "Contr0l",
         "width": 800,
         "height": 600
       }

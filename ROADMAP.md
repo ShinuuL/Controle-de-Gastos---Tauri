@@ -59,19 +59,27 @@ SQLite é local. Futura sincronização nuvem deve usar comandos Rust tipados co
 Desenho completo em [`docs/arquitetura-nuvem-e-distribuicao.md`](docs/arquitetura-nuvem-e-distribuicao.md).
 Placeholders inertes já criados em `src/lib/cloud/` e `src/features/auth/`.
 
-### Fase 12 — Reparo de migração quebrada (pré-requisito, prioridade alta)
+### Fase 12 — Reparo de migração quebrada (✅ concluída em 2026-08-27)
 
-**Bloqueia as fases 13–16.** Aparelhos que instalaram um build com a migração
+Aparelhos que instalaram um build com a migração
 `v1` editada não abrem mais: o `sqlx` detecta `VersionMismatch(1)` dentro de
 `Database.load()`, antes de qualquer tela renderizar. Subir o banco para a nuvem
 **não** resolve esses aparelhos — o erro ocorre antes de qualquer código de rede
 rodar, e sem o app abrir o usuário não chega à tela de login para restaurar nada.
 
-Itens:
-- Capturar a falha de migração em `getDb()` e distinguir `VersionMismatch` de erro genérico.
-- Tela de recuperação: exportar o `.db` atual, recriar o schema, reimportar.
-- Regra permanente: migração aplicada nunca é editada — só nova versão.
-- Regressão cobrindo o schema das duas populações (v1 original e v1 editada).
+Entregue:
+- **`preload` removido do `tauri.conf.json`.** Era ele que fazia a migração rodar no setup do plugin Rust, onde a falha abortava a inicialização e a webview nunca carregava — tela de reparo em React seria impossível. Sem ele, a migração roda em `Database.load()` e o erro chega ao JS.
+- `src-tauri/src/recovery.rs`: diagnóstico e reparo por *stamping*. Corrige o checksum registrado quando o schema comprova que a migração já foi aplicada; **não reescreve dados**. Backup do `.db` antes de qualquer escrita, e recusa reparar se o estado não for o previsto.
+- `src/lib/dbFailure.ts`: classifica a falha (`migracao-divergente`, `migracao-ausente-no-codigo`, `desconhecida`) a partir das mensagens do sqlx.
+- `src/features/recovery/DatabaseRecoveryScreen.tsx` + portão de boot no `App.tsx`.
+- 7 testes Rust e 5 TS, incluindo o cenário da população quebrada de ponta a ponta.
+
+**Validado em aparelho real (2026-08-27):** instalado por cima de um aparelho da
+população B, o app abriu na tela de reparo em vez de morrer no boot, o reparo
+rodou e após reiniciar o app voltou ao normal com os dados preservados.
+
+**Regra permanente:** migração aplicada nunca é editada, só nova versão. Editar
+a v1 depois de distribuída foi a causa desta fase inteira.
 
 ### Fase 13 — Contas e login
 
@@ -86,13 +94,19 @@ Itens:
 
 ### Fase 14 — Pagamento e entitlement
 
-Itens:
-- Decidir Stripe (webhook nativo, recorrência) ou PIX (taxa menor, confirmação manual sem PSP).
-- `entitlement` gravado apenas por **webhook** ou por **liberação manual no painel** (fase 14b) — nunca por chamada do cliente.
-- Estados: `ativo` / `pendente` / `expirado` / `ausente`, com campo `origin` (`webhook` | `manual`).
-- Modelo local-first confirmado (2026-08-27): bypass do cliente é possível e aceito.
+**Compra única, sem assinatura** (decidido em 2026-08-27). O entitlement não
+vence: a única forma de perder acesso é estorno. Isso elimina a questão de
+"trancar o usuário fora dos próprios dados quando a assinatura vence", que era
+o ponto mais delicado do desenho local-first.
 
-### Fase 14b — Painel administrativo (necessária se o pagamento for PIX)
+Itens:
+- Escolher Stripe ou PIX. Sem recorrência, o PIX fica mais atraente (taxa ~4x menor); o custo é tornar a fase 14b obrigatória.
+- `entitlement` gravado apenas por **webhook** ou por **liberação manual no painel** (fase 14b) — nunca por chamada do cliente.
+- Estados: `ativo` / `pendente` / `revogado` / `ausente`, com campo `origin` (`webhook` | `manual`).
+- Tratar estorno: MED no PIX, contestação no cartão → `revogado`.
+- Modelo local-first confirmado: bypass do cliente é possível e aceito.
+
+### Fase 14b — Painel administrativo (obrigatória se o pagamento for PIX)
 
 Existe porque no PIX o dinheiro pode entrar sem o entitlement liberar: QR
 estático não notifica, e webhook de PSP pode falhar, chegar fora de ordem ou
@@ -114,6 +128,25 @@ Itens:
 - `applicationId` distinto por canal, se os dois precisarem coexistir no mesmo aparelho.
 - Dois artefatos no `deploy.toml`, hoje com apenas um bloco `[[artifact]]`.
 
+### Fase 15b — LGPD (bloqueia a cobrança do primeiro cliente)
+
+Ver seção 6 de [`docs/arquitetura-nuvem-e-distribuicao.md`](docs/arquitetura-nuvem-e-distribuicao.md).
+Hoje a exposição é zero porque nada sai do aparelho; a nuvem muda isso de patamar.
+
+**E2E aprovado em 2026-08-27.** Custo aceito: perdeu a senha, perdeu o backup —
+precisa estar visível no cadastro, não enterrado nos termos.
+
+Itens:
+- Esquema de envelope (seção 7 do doc): Argon2id com salts distintos para verificador de login e KEK; DEK aleatória cifrando o banco; DEK embrulhada pela KEK no servidor. Trocar senha re-embrulha a DEK, não re-cifra os dados.
+- Cripto em Rust (`argon2`, `chacha20poly1305`) dentro do `src-tauri` — nenhuma dependência de cripto existe hoje no `Cargo.toml`.
+- Base legal: execução de contrato (art. 7º), não consentimento.
+- Minimização: só email, `user_id` e referência de pagamento.
+- Endpoint real de eliminação de conta, junto com o de cadastro.
+- Transferência internacional (art. 33) se o backend for Cloudflare/Turso.
+- Política de privacidade e termos antes do primeiro cadastro real.
+- Canal de contato do titular (art. 41; Resolução CD/ANPD nº 2/2022 simplifica DPO para pequeno porte).
+- Revisão por advogado antes de cobrar do primeiro cliente.
+
 ### Fase 16 — Landing page e release
 
 Itens:
@@ -123,10 +156,19 @@ Itens:
 
 ### Fase 17 — Sincronização em nuvem
 
+**Turso/libSQL aprovado em 2026-08-27, com um ajuste:** o sync nativo do libSQL
+(embedded replica) opera no nível das linhas e exige que o servidor leia os
+dados — incompatível com E2E. Ver seção 7 do doc. Divisão resultante:
+
+- **Object storage (R2/S3):** o `.db` cifrado do usuário, como arquivo opaco.
+- **Turso:** control plane — contas, entitlements, pagamentos, auditoria do painel. É aqui que o SQL rende.
+
 Itens:
 - Modelo local-first: SQLite continua sendo a fonte de leitura, nuvem é réplica e restauração.
 - Sincronização por comandos Rust tipados, conforme AGENTS.md — não como segundo caminho de leitura no React.
-- Resolução de conflito e recuperação pós-reinstalação.
+- Backend em TypeScript (recomendado, não fechado): o serviço é pequeno porque não há lógica sobre dados que o servidor não consegue ler.
+- Recuperação pós-reinstalação.
+- **Modelo de resolução de conflito: adiado deliberadamente para esta fase** (decidido em 2026-08-27). Dois aparelhos editando offline na mesma conta é a parte mais cara do projeto, e desenhá-la antes de existir backend seria especular. Fica registrado como risco conhecido, não como esquecimento.
 
 ---
 

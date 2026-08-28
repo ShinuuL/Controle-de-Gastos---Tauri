@@ -12,7 +12,7 @@ export default function Sidebar({ active, onSelect }: SidebarProps) {
     <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-surface">
       <div className="flex h-16 items-center px-6">
         <h1 className="text-lg font-semibold tracking-tight">
-          Controle de Gastos
+          Contr0l
         </h1>
       </div>
       <nav className="flex flex-1 flex-col gap-1 p-3" aria-label="Navegação principal">

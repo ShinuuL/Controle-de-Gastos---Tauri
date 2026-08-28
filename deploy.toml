@@ -1,16 +1,17 @@
 # Configuracao de deploy deste projeto (deploy-base)
 [deploy]
-app         = "controle-de-gastos"   # id do app: minusculas, sem espacos
-repo        = "ShinuuL/releases"     # repo privado que guarda as releases -- CONFIRMAR
-gateway     = "https://updates.exemplo.com.br"  # URL publica do Worker -- PREENCHER
+app         = "contr0l"              # id do app: minusculas, sem espacos; vira prefixo da tag
+repo        = "ShinuuL/Releases"     # repo privado que guarda as releases de todos os apps
+gateway     = "https://updates-gateway.sofaltaumaletr.workers.dev"  # URL publica do Worker
 channel     = "stable"               # stable | beta
 private_key = 'C:/chaves/deploy-base.pem'       # PEM de assinatura -- FORA do repo
-public_key  = "PREENCHA_COM_deploy-base_keygen" # hex, embutido no cliente e no portal
+public_key  = "104c81a81b05108f914c50d091cd184a210eae57528e20298d8835344b740045" # hex (Ed25519, publica -- pode versionar)
 
-# APK Android universal, gerado por `npx tauri android build --apk`.
-# O publish versiona o nome do arquivo automaticamente (app-universal-release-0.2.7.apk).
+# APK Android universal. Gere com `npm run android:release`, que compila e
+# copia para dist-android/ com o nome do produto -- o publish versiona a partir
+# do nome do arquivo, produzindo contr0l-0.2.9.apk.
 [[artifact]]
-path     = "src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk"
+path     = "dist-android/contr0l.apk"
 platform = "android"
 arch     = "universal"
 kind     = "apk"
