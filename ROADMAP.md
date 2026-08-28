@@ -59,19 +59,26 @@ SQLite é local. Futura sincronização nuvem deve usar comandos Rust tipados co
 Desenho completo em [`docs/arquitetura-nuvem-e-distribuicao.md`](docs/arquitetura-nuvem-e-distribuicao.md).
 Placeholders inertes já criados em `src/lib/cloud/` e `src/features/auth/`.
 
-### Fase 12 — Reparo de migração quebrada (pré-requisito, prioridade alta)
+### Fase 12 — Reparo de migração quebrada (✅ concluída em 2026-08-27)
 
-**Bloqueia as fases 13–16.** Aparelhos que instalaram um build com a migração
+Aparelhos que instalaram um build com a migração
 `v1` editada não abrem mais: o `sqlx` detecta `VersionMismatch(1)` dentro de
 `Database.load()`, antes de qualquer tela renderizar. Subir o banco para a nuvem
 **não** resolve esses aparelhos — o erro ocorre antes de qualquer código de rede
 rodar, e sem o app abrir o usuário não chega à tela de login para restaurar nada.
 
-Itens:
-- Capturar a falha de migração em `getDb()` e distinguir `VersionMismatch` de erro genérico.
-- Tela de recuperação: exportar o `.db` atual, recriar o schema, reimportar.
-- Regra permanente: migração aplicada nunca é editada — só nova versão.
-- Regressão cobrindo o schema das duas populações (v1 original e v1 editada).
+Entregue:
+- **`preload` removido do `tauri.conf.json`.** Era ele que fazia a migração rodar no setup do plugin Rust, onde a falha abortava a inicialização e a webview nunca carregava — tela de reparo em React seria impossível. Sem ele, a migração roda em `Database.load()` e o erro chega ao JS.
+- `src-tauri/src/recovery.rs`: diagnóstico e reparo por *stamping*. Corrige o checksum registrado quando o schema comprova que a migração já foi aplicada; **não reescreve dados**. Backup do `.db` antes de qualquer escrita, e recusa reparar se o estado não for o previsto.
+- `src/lib/dbFailure.ts`: classifica a falha (`migracao-divergente`, `migracao-ausente-no-codigo`, `desconhecida`) a partir das mensagens do sqlx.
+- `src/features/recovery/DatabaseRecoveryScreen.tsx` + portão de boot no `App.tsx`.
+- 7 testes Rust e 5 TS, incluindo o cenário da população quebrada de ponta a ponta.
+
+Pendente de verificação: nada disso foi executado em aparelho real com um banco
+de verdade da população B — só em SQLite em memória.
+
+**Regra permanente:** migração aplicada nunca é editada, só nova versão. Editar
+a v1 depois de distribuída foi a causa desta fase inteira.
 
 ### Fase 13 — Contas e login
 
