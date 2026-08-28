@@ -7,7 +7,7 @@
 <meta name="description" content="App de controle de gastos para Android que funciona sem internet e sem conta. Os lançamentos ficam gravados no celular, não em servidor.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
 <style>
 /* ============================================================ tokens
    A pagina e papel frio de contabilidade; as telas do app sao os unicos
@@ -35,6 +35,7 @@
 
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  --pixel:"Pixelify Sans","IBM Plex Mono",monospace;
 }
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
@@ -74,7 +75,8 @@ a{color:inherit}
   border-bottom:1px solid var(--linha);
 }
 .cab__int{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding-block:.9rem}
-.marca{display:flex;align-items:center;gap:.6rem;font-family:var(--mono);font-weight:600;font-size:1.05rem;letter-spacing:-.01em}
+.marca{display:flex;align-items:center;gap:.6rem}
+.mm{font-family:var(--pixel);font-weight:700;font-size:1.05rem;letter-spacing:.02em;line-height:1}
 .marca svg{display:block}
 
 /* ============================================================ hero */
@@ -85,8 +87,8 @@ a{color:inherit}
 .hero__sub{margin-top:1.25rem;font-size:clamp(1rem,2vw,1.15rem);color:var(--tinta-suave);max-width:46ch}
 
 /* ============================================================ recibo
-   O bloco de download e o elemento de assinatura da pagina: um recibo de
-   verificacao. Os dados vem do manifesto assinado servido pelo gateway. */
+   Bloco de download: so o que o usuario comum precisa para decidir instalar.
+   Hash e assinatura moram na secao de especificacoes, para quem quer conferir. */
 .recibo{
   margin-top:2rem;
   background:var(--papel-alto);
@@ -110,6 +112,8 @@ a{color:inherit}
 .baixar:focus-visible{outline:3px solid var(--marca);outline-offset:3px}
 
 .recibo__linhas{margin-top:1rem;border-top:1px dashed var(--linha);padding-top:.85rem}
+.recibo__nota{margin-top:.85rem;font-size:.82rem;color:var(--tinta-suave)}
+.recibo__nota a{color:var(--marca);text-decoration:underline;text-underline-offset:2px}
 .rec{
   display:grid;grid-template-columns:auto 1fr;gap:.75rem;
   align-items:baseline;
@@ -203,8 +207,25 @@ a{color:inherit}
 .item p{margin-top:.4rem;color:var(--tinta-suave);font-size:.94rem}
 
 .passos{list-style:none;margin:1.25rem 0 0;padding:0;counter-reset:p;display:grid;gap:.85rem;max-width:52ch}
-.passos li{counter-increment:p;display:grid;grid-template-columns:auto 1fr;gap:.7rem;color:var(--tinta-suave);font-size:.94rem}
+/* o texto de cada passo vai num <span>: sem ele, um <strong> solto viraria
+   um item de grade proprio e sairia da coluna */
+.passos li{counter-increment:p;display:grid;grid-template-columns:auto 1fr;gap:.7rem;color:var(--tinta-suave);font-size:.94rem;align-items:start}
+.passos li strong{color:var(--tinta);font-weight:600}
 .passos li::before{content:counter(p);font-family:var(--mono);font-size:.78rem;color:var(--tinta);border:1px solid var(--linha);border-radius:50%;width:1.55rem;height:1.55rem;display:grid;place-items:center;background:var(--papel-alto)}
+
+/* ============================================================ specs */
+.specs{margin:0;border-top:1px solid var(--linha)}
+.spec{
+  display:grid;grid-template-columns:1fr;gap:.15rem;
+  padding-block:.7rem;border-bottom:1px solid var(--linha);
+}
+@media(min-width:520px){.spec{grid-template-columns:11rem 1fr;gap:1rem;align-items:baseline}}
+.spec dt{font-size:.86rem;color:var(--tinta-suave)}
+.spec dd{margin:0;font-family:var(--mono);font-size:.84rem}
+.spec dd.quebra{word-break:break-all}
+.spec dd code{font-family:var(--mono);background:var(--papel-alto);border:1px solid var(--linha);border-radius:.25rem;padding:.05rem .3rem;font-size:.95em}
+.spec__n{display:block;margin-top:.3rem;font-family:var(--sans);font-size:.82rem;color:var(--tinta-suave);line-height:1.5}
+.spec dd .ok{color:var(--credito)}
 
 /* ============================================================ rodape */
 .rodape{border-top:1px solid var(--linha);padding-block:2.5rem;font-size:.88rem;color:var(--tinta-suave)}
@@ -234,7 +255,7 @@ a{color:inherit}
         <path fill="#34d399" d="M636.15 741.13A300 300 0 0 1 366.9 704.6l72.9-95.03a175 175 0 0 0 157.1 21.31Z"/>
         <path fill="#60a5fa" d="M346.3 689.6A300 300 0 0 1 466.75 214.6l19.65 116.15a175 175 0 0 0-70.26 277.1Z"/>
       </svg>
-      Contr0l
+      <span class="mm">Contr0l</span>
     </span>
     <a class="baixar" style="width:auto;min-height:2.4rem;padding:0 1rem;font-size:.88rem" href="#baixar">Baixar</a>
   </div>
@@ -265,9 +286,10 @@ a{color:inherit}
           <div class="rec"><dt>versão</dt><dd id="v">0.2.9</dd></div>
           <div class="rec"><dt>tamanho</dt><dd id="t">66,4 MB</dd></div>
           <div class="rec"><dt>requer</dt><dd>Android 7.0 ou superior</dd></div>
-          <div class="rec"><dt>sha256</dt><dd id="h">844d15c1a55f348c8b4b8e514ed8fb5125549a0aed1561ee7c6b7ae0decaa392</dd></div>
-          <div class="rec"><dt>assinatura</dt><dd><span class="ok" id="s">Ed25519 · dcbd34553e007416</span></dd></div>
         </dl>
+        <p class="recibo__nota">
+          Gratuito, sem anúncios. <a href="#specs">Especificações e verificação</a>
+        </p>
       </div>
     </div>
 
@@ -484,37 +506,60 @@ a{color:inherit}
         APK, e vale conferir o que você está instalando.
       </p>
       <ol class="passos">
-        <li>Baixe o APK pelo botão acima.</li>
-        <li>Abra o arquivo. O Android vai avisar que a origem é desconhecida.</li>
-        <li>Toque em <strong>Configurações</strong> e permita instalar deste app — normalmente o navegador ou o gerenciador de arquivos.</li>
-        <li>Volte e confirme a instalação.</li>
+        <li><span>Baixe o APK pelo botão acima.</span></li>
+        <li><span>Abra o arquivo. O Android vai avisar que a origem é desconhecida.</span></li>
+        <li><span>Toque em <strong>Configurações</strong> e permita instalar deste app — normalmente o navegador ou o gerenciador de arquivos.</span></li>
+        <li><span>Volte e confirme a instalação.</span></li>
       </ol>
       <p style="margin-top:1.5rem">
-        Quer conferir antes? Compare o sha256 do arquivo baixado com o que está no
-        recibo. No Android, qualquer app de hash resolve; no computador,
-        <code style="font-family:var(--mono);font-size:.85em">certutil -hashfile contr0l-0.2.9.apk SHA256</code>.
+        Quer conferir o arquivo antes de instalar? As
+        <a href="#specs" style="color:var(--marca)">especificações</a> trazem o
+        sha256 e a assinatura.
       </p>
     </div>
   </div>
 </section>
 
-<!-- ========================================================= assinatura -->
-<section class="faixa">
+<!-- ========================================================= especificacoes -->
+<section class="faixa" id="specs">
   <div class="env duas">
     <div>
-      <p class="rotulo">Atualizações</p>
-      <h2>Toda versão vem assinada.</h2>
-    </div>
-    <div class="corpo">
-      <p>
-        Cada release é assinada com uma chave Ed25519 que fica na minha máquina e
+      <p class="rotulo">Especificações</p>
+      <h2>Tudo que dá para conferir.</h2>
+      <p class="corpo" style="margin-top:1rem">
+        Cada versão é assinada com uma chave Ed25519 que fica na minha máquina e
         nunca sai dela. O servidor que entrega o arquivo é só transporte:
-        <strong>se ele for comprometido, o app rejeita o binário</strong>, porque a
-        assinatura não bateria.
+        <strong>se ele for comprometido, o app rejeita o binário</strong>, porque
+        a assinatura não bateria.
       </p>
-      <p>
-        O recibo no topo desta página não é enfeite — ele é lido do manifesto
-        assinado, o mesmo que o app confere antes de aceitar uma atualização.
+    </div>
+
+    <div>
+      <dl class="specs">
+        <div class="spec"><dt>Versão</dt><dd id="v2">0.2.9</dd></div>
+        <div class="spec"><dt>Código da versão</dt><dd>2009</dd></div>
+        <div class="spec"><dt>Tamanho</dt><dd id="t2">66,4 MB</dd></div>
+        <div class="spec"><dt>Requer</dt><dd>Android 7.0 (API 24) ou superior</dd></div>
+        <div class="spec"><dt>Compilado para</dt><dd>API 36</dd></div>
+        <div class="spec"><dt>Arquiteturas</dt><dd>arm64-v8a, armeabi-v7a, x86, x86_64</dd></div>
+        <div class="spec"><dt>Pacote</dt><dd>com.controle_gastos.app</dd></div>
+        <div class="spec"><dt>Dados</dt><dd>SQLite no aparelho</dd></div>
+        <div class="spec">
+          <dt>Permissões</dt>
+          <dd>
+            <code>INTERNET</code>
+            <span class="spec__n">Declarada pelo componente de webview do Android e não utilizada: o app não faz requisições de rede.</span>
+          </dd>
+        </div>
+        <div class="spec"><dt>sha256 do APK</dt><dd class="quebra" id="h2">844d15c1a55f348c8b4b8e514ed8fb5125549a0aed1561ee7c6b7ae0decaa392</dd></div>
+        <div class="spec"><dt>Assinatura do manifesto</dt><dd class="quebra"><span class="ok" id="s2">ed25519 · dcbd34553e007416</span></dd></div>
+        <div class="spec"><dt>Certificado do pacote</dt><dd class="quebra">SHA-256 4937b4f476fae8c8b3bdecc6c84af44706121222769ffb136a165630b64146d9</dd></div>
+      </dl>
+
+      <p class="corpo" style="margin-top:1.25rem;font-size:.9rem">
+        Para conferir o arquivo baixado no computador:
+        <code style="font-family:var(--mono);font-size:.9em">certutil -hashfile <span data-arquivo>contr0l-0.2.9.apk</span> SHA256</code>.
+        O resultado precisa ser igual ao sha256 acima.
       </p>
     </div>
   </div>
@@ -524,7 +569,7 @@ a{color:inherit}
 
 <footer class="rodape">
   <div class="env rodape__int">
-    <span>Contr0l · feito por Gabriel Garcia</span>
+    <span><span class="mm">Contr0l</span> · feito por Gabriel Garcia</span>
     <span><a href="#baixar">Baixar para Android</a></span>
   </div>
 </footer>
@@ -543,11 +588,15 @@ a{color:inherit}
     const { manifest, signature } = await r.json();
     const a = manifest.artifacts.find((x) => x.kind === "apk");
     if (!a) return;
-    document.getElementById("v").textContent = manifest.version;
-    document.getElementById("t").textContent = mb(a.size);
-    document.getElementById("h").textContent = a.sha256;
-    document.getElementById("s").textContent = `${signature.alg} · ${signature.key_id}`;
+    const põe = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+    põe("v", manifest.version);
+    põe("v2", manifest.version);
+    põe("t", mb(a.size));
+    põe("t2", mb(a.size));
+    põe("h2", a.sha256);
+    põe("s2", `${signature.alg} · ${signature.key_id}`);
     document.getElementById("lnk").href = a.url;
+    document.querySelectorAll("[data-arquivo]").forEach((el) => { el.textContent = a.filename; });
   } catch {
     /* offline ou gateway fora: o estado embutido no HTML permanece valido */
   }
