@@ -126,25 +126,53 @@ a{color:inherit}
 
 /* ============================================================ aparelho */
 .fone{
+  position:relative;
   width:100%;max-width:300px;margin-inline:auto;
   background:var(--app-bg);
-  border:8px solid #060b18;
-  border-radius:2.2rem;
-  padding:.55rem .5rem 0;
-  box-shadow:0 30px 60px -30px rgb(15 23 42 / .55);
+  border:9px solid #05080f;
+  border-radius:2.4rem;
+  box-shadow:0 0 0 1px #26304766,0 30px 60px -30px rgb(15 23 42 / .55);
   color:var(--app-fg);
   font-size:12px;line-height:1.45;
   overflow:hidden;
 }
-.fone__topo{display:flex;align-items:center;justify-content:space-between;padding:.25rem .55rem .6rem;font-size:11px;color:var(--app-muted);font-family:var(--mono)}
-.fone__tela{padding:0 .55rem}
+/* camera em furo, como nos Android atuais */
+.fone::after{
+  content:"";position:absolute;z-index:3;
+  top:.4rem;left:50%;transform:translateX(-50%);
+  width:7px;height:7px;border-radius:50%;
+  background:#05080f;box-shadow:inset 0 0 0 1px #1b2434;
+}
+/* barra de status do sistema: hora a esquerda, icones a direita */
+.fone__status{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.42rem .75rem .28rem;
+  font-family:var(--mono);font-size:9.5px;color:var(--app-fg);
+}
+.fone__icones{display:flex;align-items:center;gap:3.5px}
+.fone__icones svg{display:block;fill:currentColor}
+/* cabecalho do proprio app, abaixo da barra de status */
+.fone__cab{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.3rem .7rem .45rem;border-bottom:1px solid var(--app-borda);
+}
+.fone__cab .mm{font-size:12px}
+.fone__tema{
+  width:13px;height:13px;border-radius:50%;
+  border:1.5px solid var(--app-muted);
+  background:linear-gradient(90deg,var(--app-muted) 50%,transparent 50%);
+}
+.fone__tela{padding:.6rem .55rem 0}
 .fone__t{font-size:14px;font-weight:600;margin-bottom:.55rem}
 .fone__nav{
   display:grid;grid-template-columns:repeat(3,1fr);gap:.25rem;
-  margin-top:.85rem;padding:.5rem .25rem calc(.5rem + env(safe-area-inset-bottom));
+  margin-top:.85rem;padding:.5rem .25rem .4rem;
   border-top:1px solid var(--app-borda);
   font-size:10px;color:var(--app-muted);text-align:center;
 }
+/* barra de gestos do Android */
+.fone__gesto{height:15px;display:grid;place-items:center}
+.fone__gesto::before{content:"";width:36%;height:3px;border-radius:99px;background:#3b4763}
 .fone__nav b{display:block;font-weight:500}
 .fone__nav .on{color:var(--app-secondary)}
 
@@ -295,7 +323,8 @@ a{color:inherit}
 
     <!-- Tela: Resumo -->
     <div class="fone sobe" role="img" aria-label="Tela de resumo do Contr0l mostrando o mês de agosto de 2026, com realizado de R$ 2.500,00 e um gráfico de rosca das saídas por categoria.">
-      <div class="fone__topo"><span>9:41</span><span>Contr0l</span></div>
+      <div class="fone__status"><span>14:32</span><span class="fone__icones"><svg width="9" height="7" viewBox="0 0 9 7" aria-hidden="true"><rect x="0" y="4.5" width="1.7" height="2.5" rx=".4"/><rect x="2.6" y="2.7" width="1.7" height="4.3" rx=".4"/><rect x="5.2" y="1" width="1.7" height="6" rx=".4"/><rect x="7.3" y="0" width="1.7" height="7" rx=".4" opacity=".35"/></svg><svg width="10" height="7" viewBox="0 0 10 7" aria-hidden="true"><path d="M5 7 .3 2.1A6.8 6.8 0 0 1 9.7 2.1z"/></svg><svg width="14" height="7" viewBox="0 0 14 7" aria-hidden="true"><rect x="0" y="0" width="11.5" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1" opacity=".55"/><rect x="1.5" y="1.5" width="7" height="4" rx="1"/><rect x="12.5" y="2.2" width="1.5" height="2.6" rx=".6" opacity=".55"/></svg></span></div>
+      <div class="fone__cab"><span class="mm">Contr0l</span><span class="fone__tema"></span></div>
       <div class="fone__tela">
         <div class="fone__t">Resumo</div>
         <div class="mes"><span>‹</span><span>Agosto de 2026</span><span>›</span></div>
@@ -335,6 +364,7 @@ a{color:inherit}
         <span><b>⇄</b>Movimentações</span>
         <span><b>◫</b>Categorias</span>
       </div>
+      <div class="fone__gesto"></div>
     </div>
   </div>
 </section>
@@ -351,7 +381,8 @@ a{color:inherit}
 
       <div>
         <div class="fone" role="img" aria-label="Tela de movimentações listando salário, mercado e aluguel de agosto de 2026.">
-          <div class="fone__topo"><span>9:41</span><span>Contr0l</span></div>
+          <div class="fone__status"><span>14:32</span><span class="fone__icones"><svg width="9" height="7" viewBox="0 0 9 7" aria-hidden="true"><rect x="0" y="4.5" width="1.7" height="2.5" rx=".4"/><rect x="2.6" y="2.7" width="1.7" height="4.3" rx=".4"/><rect x="5.2" y="1" width="1.7" height="6" rx=".4"/><rect x="7.3" y="0" width="1.7" height="7" rx=".4" opacity=".35"/></svg><svg width="10" height="7" viewBox="0 0 10 7" aria-hidden="true"><path d="M5 7 .3 2.1A6.8 6.8 0 0 1 9.7 2.1z"/></svg><svg width="14" height="7" viewBox="0 0 14 7" aria-hidden="true"><rect x="0" y="0" width="11.5" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1" opacity=".55"/><rect x="1.5" y="1.5" width="7" height="4" rx="1"/><rect x="12.5" y="2.2" width="1.5" height="2.6" rx=".6" opacity=".55"/></svg></span></div>
+      <div class="fone__cab"><span class="mm">Contr0l</span><span class="fone__tema"></span></div>
           <div class="fone__tela">
             <div class="fone__t">Movimentações</div>
             <div class="mes"><span>‹</span><span>Agosto de 2026</span><span>›</span></div>
@@ -375,6 +406,7 @@ a{color:inherit}
             <span class="on"><b>⇄</b>Movimentações</span>
             <span><b>◫</b>Categorias</span>
           </div>
+          <div class="fone__gesto"></div>
         </div>
         <h3 class="tela__t">Entradas e saídas na mesma lista</h3>
         <p class="tela__d">Descrições longas quebram em duas linhas. Cada item mostra se já aconteceu ou ainda está previsto.</p>
@@ -382,7 +414,8 @@ a{color:inherit}
 
       <div>
         <div class="fone" role="img" aria-label="Tela de categorias com orçamentos mensais e barras de progresso.">
-          <div class="fone__topo"><span>9:41</span><span>Contr0l</span></div>
+          <div class="fone__status"><span>14:32</span><span class="fone__icones"><svg width="9" height="7" viewBox="0 0 9 7" aria-hidden="true"><rect x="0" y="4.5" width="1.7" height="2.5" rx=".4"/><rect x="2.6" y="2.7" width="1.7" height="4.3" rx=".4"/><rect x="5.2" y="1" width="1.7" height="6" rx=".4"/><rect x="7.3" y="0" width="1.7" height="7" rx=".4" opacity=".35"/></svg><svg width="10" height="7" viewBox="0 0 10 7" aria-hidden="true"><path d="M5 7 .3 2.1A6.8 6.8 0 0 1 9.7 2.1z"/></svg><svg width="14" height="7" viewBox="0 0 14 7" aria-hidden="true"><rect x="0" y="0" width="11.5" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1" opacity=".55"/><rect x="1.5" y="1.5" width="7" height="4" rx="1"/><rect x="12.5" y="2.2" width="1.5" height="2.6" rx=".6" opacity=".55"/></svg></span></div>
+      <div class="fone__cab"><span class="mm">Contr0l</span><span class="fone__tema"></span></div>
           <div class="fone__tela">
             <div class="fone__t">Categorias</div>
             <div class="cartao">
@@ -406,6 +439,7 @@ a{color:inherit}
             <span><b>⇄</b>Movimentações</span>
             <span class="on"><b>◫</b>Categorias</span>
           </div>
+          <div class="fone__gesto"></div>
         </div>
         <h3 class="tela__t">Orçamento por categoria</h3>
         <p class="tela__d">Defina um teto mensal e acompanhe quanto já foi usado. Categorias sem orçamento continuam funcionando normalmente.</p>
@@ -413,7 +447,8 @@ a{color:inherit}
 
       <div>
         <div class="fone" role="img" aria-label="Tela de importação de extrato do Itaú em CSV, com prévia das linhas antes de gravar.">
-          <div class="fone__topo"><span>9:41</span><span>Contr0l</span></div>
+          <div class="fone__status"><span>14:32</span><span class="fone__icones"><svg width="9" height="7" viewBox="0 0 9 7" aria-hidden="true"><rect x="0" y="4.5" width="1.7" height="2.5" rx=".4"/><rect x="2.6" y="2.7" width="1.7" height="4.3" rx=".4"/><rect x="5.2" y="1" width="1.7" height="6" rx=".4"/><rect x="7.3" y="0" width="1.7" height="7" rx=".4" opacity=".35"/></svg><svg width="10" height="7" viewBox="0 0 10 7" aria-hidden="true"><path d="M5 7 .3 2.1A6.8 6.8 0 0 1 9.7 2.1z"/></svg><svg width="14" height="7" viewBox="0 0 14 7" aria-hidden="true"><rect x="0" y="0" width="11.5" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1" opacity=".55"/><rect x="1.5" y="1.5" width="7" height="4" rx="1"/><rect x="12.5" y="2.2" width="1.5" height="2.6" rx=".6" opacity=".55"/></svg></span></div>
+      <div class="fone__cab"><span class="mm">Contr0l</span><span class="fone__tema"></span></div>
           <div class="fone__tela">
             <div class="fone__t">Importar extrato</div>
             <p style="font-size:10.5px;color:var(--app-muted);margin-bottom:.5rem">3 lançamentos encontrados · 1 já existe</p>
@@ -438,6 +473,7 @@ a{color:inherit}
             <span class="on"><b>⇄</b>Movimentações</span>
             <span><b>◫</b>Categorias</span>
           </div>
+          <div class="fone__gesto"></div>
         </div>
         <h3 class="tela__t">Importação de extrato</h3>
         <p class="tela__d">Extrato do Itaú em CSV, lido no próprio aparelho. Lançamentos repetidos são marcados antes de você gravar.</p>
