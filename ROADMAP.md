@@ -125,8 +125,12 @@ Itens:
 Ver seção 6 de [`docs/arquitetura-nuvem-e-distribuicao.md`](docs/arquitetura-nuvem-e-distribuicao.md).
 Hoje a exposição é zero porque nada sai do aparelho; a nuvem muda isso de patamar.
 
+**E2E aprovado em 2026-08-27.** Custo aceito: perdeu a senha, perdeu o backup —
+precisa estar visível no cadastro, não enterrado nos termos.
+
 Itens:
-- **Decidir criptografia ponta a ponta antes de escrever a sincronização.** Como a nuvem é só réplica, o servidor nunca precisa ler o conteúdo. Com E2E, um vazamento expõe blobs inúteis. Custo aceito: perdeu a senha, perdeu o backup — e isso precisa estar visível no cadastro.
+- Esquema de envelope (seção 7 do doc): Argon2id com salts distintos para verificador de login e KEK; DEK aleatória cifrando o banco; DEK embrulhada pela KEK no servidor. Trocar senha re-embrulha a DEK, não re-cifra os dados.
+- Cripto em Rust (`argon2`, `chacha20poly1305`) dentro do `src-tauri` — nenhuma dependência de cripto existe hoje no `Cargo.toml`.
 - Base legal: execução de contrato (art. 7º), não consentimento.
 - Minimização: só email, `user_id` e referência de pagamento.
 - Endpoint real de eliminação de conta, junto com o de cadastro.
@@ -144,9 +148,17 @@ Itens:
 
 ### Fase 17 — Sincronização em nuvem
 
+**Turso/libSQL aprovado em 2026-08-27, com um ajuste:** o sync nativo do libSQL
+(embedded replica) opera no nível das linhas e exige que o servidor leia os
+dados — incompatível com E2E. Ver seção 7 do doc. Divisão resultante:
+
+- **Object storage (R2/S3):** o `.db` cifrado do usuário, como arquivo opaco.
+- **Turso:** control plane — contas, entitlements, pagamentos, auditoria do painel. É aqui que o SQL rende.
+
 Itens:
 - Modelo local-first: SQLite continua sendo a fonte de leitura, nuvem é réplica e restauração.
 - Sincronização por comandos Rust tipados, conforme AGENTS.md — não como segundo caminho de leitura no React.
+- Backend em TypeScript (recomendado, não fechado): o serviço é pequeno porque não há lógica sobre dados que o servidor não consegue ler.
 - Recuperação pós-reinstalação.
 - **Modelo de resolução de conflito: adiado deliberadamente para esta fase** (decidido em 2026-08-27). Dois aparelhos editando offline na mesma conta é a parte mais cara do projeto, e desenhá-la antes de existir backend seria especular. Fica registrado como risco conhecido, não como esquecimento.
 

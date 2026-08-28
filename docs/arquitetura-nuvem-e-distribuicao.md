@@ -264,7 +264,93 @@ independentemente da classificação legal.
 
 ---
 
-## 7. Pontos de integração que vão precisar mudar
+## 7. Stack e criptografia
+
+Decidido em 2026-08-27: **Turso/libSQL + criptografia ponta a ponta.** Esta
+seção existe porque as duas decisões, juntas, exigem um ajuste que não é óbvio.
+
+### A tensão entre E2E e o sync nativo do libSQL
+
+O apelo original do Turso era a *embedded replica*: o libSQL sincroniza banco
+local com banco remoto sozinho, o que casaria perfeitamente com local-first.
+
+Só que essa sincronização opera **no nível das linhas** — o servidor precisa
+entender os dados para replicá-los. Com E2E o servidor não pode ler nada. As
+duas escolhas se atropelam, e é preciso escolher onde ceder:
+
+| Opção | Como fica | Veredito |
+|---|---|---|
+| **(a) Blob cifrado** | O `.db` inteiro é cifrado no aparelho e sobe como arquivo opaco | **Escolhida.** Simples, E2E de verdade, e cabe no papel de "réplica e restauração" que o desenho já dava à nuvem |
+| (b) Sync nativo do libSQL | Replicação automática, servidor lê tudo | Descartada: anula a decisão de E2E |
+| (c) Cifrar coluna a coluna | Sync funciona, mas vazam metadados (quantidade de lançamentos, datas, valores por tamanho) e nenhuma query server-side funciona | Descartada: complexidade alta para E2E parcial |
+
+**Consequência prática:** o dado do usuário deixa de ser "um banco na nuvem" e
+vira "um arquivo cifrado versionado". Isso quer dizer:
+
+- Os dados cifrados vão para **object storage** (Cloudflare R2 ou S3), não para o Turso.
+- O **Turso guarda o control plane**: contas, entitlements, pagamentos, log de auditoria do painel. Aqui o SQL é usado de verdade, e é onde o Turso rende.
+- Sincronizar é *upload/download de arquivo*, não merge de linhas — o que também explica por que resolução de conflito (fase 17) é difícil: sem merge no servidor, dois aparelhos editando offline geram duas versões inteiras do arquivo.
+
+### Esquema de chaves
+
+O ponto perigoso: a mesma senha serve para **entrar na conta** e para **decifrar
+os dados**. Se isso for feito de forma ingênua, o servidor acaba recebendo a
+chave e o E2E vira teatro. O padrão que evita isso é envelope com duas
+derivações independentes:
+
+```
+  senha do usuario
+        │
+        ├── Argon2id(senha, salt_auth)  ──▶ verificador ──▶ vai para o servidor
+        │                                    (serve so para login)
+        │
+        └── Argon2id(senha, salt_kek)   ──▶ KEK ──▶ NUNCA sai do aparelho
+                                              │
+                                              ▼
+                                      decifra a DEK guardada
+                                              │
+   DEK aleatoria (256 bits, gerada no aparelho) ──▶ cifra o .db
+```
+
+- **Verificador** e **KEK** saem da mesma senha, mas com *salts* diferentes: quem tem o verificador não consegue chegar na KEK.
+- A **DEK** é aleatória e cifra os dados. O servidor guarda a DEK **embrulhada** pela KEK — inútil sem a senha.
+- **Trocar a senha não re-cifra nada:** deriva a KEK nova e re-embrulha a DEK. Sem esse passo, trocar senha significaria baixar, decifrar e re-cifrar o banco inteiro.
+
+Primitivas: **Argon2id** para derivação (resistente a GPU, ao contrário de
+PBKDF2/SHA) e **XChaCha20-Poly1305** para cifrar (AEAD, nonce grande o
+suficiente para sortear sem medo de colisão).
+
+### Onde o código de cripto mora
+
+**No Rust**, dentro do `src-tauri`. Três razões:
+
+1. O `AGENTS.md` já manda a nuvem passar por comandos Rust tipados, não por fetch no React. A cripto entra no mesmo caminho.
+2. As crates `argon2` e `chacha20poly1305` são maduras e auditadas; o equivalente em JS na webview é mais fácil de errar.
+3. Mantém chave e senha fora do heap do JavaScript.
+
+Nenhuma dependência de cripto existe ainda no `Cargo.toml` — entram na fase 15b.
+
+### Linguagem do backend: TypeScript
+
+Recomendação, não decisão sua ainda — você pode vetar.
+
+O backend com E2E é **pequeno**: guarda blob, autentica, recebe webhook de
+pagamento, serve o painel. Não há lógica sobre os dados do usuário, porque o
+servidor não consegue lê-los. Para esse tamanho, o que mais pesa é você já
+escrever TypeScript neste projeto — a landing page e o painel são web de
+qualquer jeito, o SDK `@libsql/client` é first-class, e o R2 é do mesmo
+ecossistema Cloudflare que o deploy-base já usa.
+
+Rust no servidor traria consistência com o `src-tauri`, mas custa uma segunda
+curva de aprendizado onde não há ganho: não existe lógica pesada para proteger.
+
+> Uma coisa a decidir com atenção depois: **onde os dados ficam fisicamente.**
+> Cloudflare e Turso rodam fora do Brasil, o que aciona transferência
+> internacional (art. 33, seção 6). O R2 permite escolher a região.
+
+---
+
+## 8. Pontos de integração que vão precisar mudar
 
 | Onde | Situação hoje | Mudança necessária |
 |---|---|---|
@@ -276,7 +362,7 @@ independentemente da classificação legal.
 
 ---
 
-## 8. Placeholders já criados
+## 9. Placeholders já criados
 
 Inertes: nenhum faz chamada de rede, e o app continua funcionando como antes.
 
