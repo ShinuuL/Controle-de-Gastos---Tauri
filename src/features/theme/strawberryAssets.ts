@@ -8,18 +8,29 @@ import steady from "../../assets/moranguinho/steady.png";
 import custard from "../../assets/moranguinho/custard.png";
 import pupcake from "../../assets/moranguinho/pupcake.png";
 
+/**
+ * Mascote do totalizador de entradas.
+ *
+ * Resolvido por padrao de nome em vez de import fixo: basta salvar o arquivo
+ * como `src/assets/moranguinho/entradas.<ext>` que ele passa a ser usado, sem
+ * editar codigo. Enquanto nao existir, `import.meta.glob` devolve um objeto
+ * vazio e o card renderiza sem mascote -- o build nao quebra nos dois casos.
+ */
+const ENTRADAS_ENCONTRADAS: Record<string, string> = import.meta.glob(
+  "../../assets/moranguinho/entradas.*",
+  { eager: true, query: "?url", import: "default" },
+);
+
+const entradas: string | undefined = Object.values(ENTRADAS_ENCONTRADAS)[0];
+
 export const STRAWBERRY_DECORATIVE_ASSETS: {
   custard: string;
   pupcake: string;
-  /**
-   * Mascote do totalizador de entradas. Ainda sem arte propria: o card
-   * funciona sem ela. Para ligar, adicione o arquivo em
-   * src/assets/moranguinho/, importe-o no topo e aponte aqui.
-   */
   entradas?: string;
 } = {
   custard,
   pupcake,
+  entradas,
 };
 
 export const STRAWBERRY_MOOD_ASSETS: Record<

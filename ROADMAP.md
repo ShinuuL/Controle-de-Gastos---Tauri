@@ -122,6 +122,44 @@ aprovados. Entrega manual por WhatsApp resolve no volume atual.
 **Não requer backend, banco ou contas.** Turso, login e sincronização ficam para
 a fase 17.
 
+### Pendências imediatas (para retomar em nova sessão)
+
+Ordem sugerida. Os dois primeiros itens destravam a release; o resto é a venda.
+
+**1. Arte do totalizador de entradas** — único item que só você pode fazer.
+Salve a imagem como `src/assets/moranguinho/entradas.png` (aceita também `.jpg`,
+`.webp`, `.avif` ou `.svg`). **Não é preciso editar código:** o asset é
+resolvido por padrão de nome via `import.meta.glob` em
+`src/features/theme/strawberryAssets.ts`. Sem o arquivo o card aparece sem
+mascote e o build passa; com ele, o mascote entra sozinho.
+
+**2. Gerar a atualização 0.3.0** — depois do item 1, porque é a arte que
+justifica a versão:
+
+```
+npm run android:release
+cd ../../deploy-base
+.\.venv\Scripts\python.exe -m deploybase.cli publish 0.3.0 --dry-run --config "<caminho>/deploy.toml"
+```
+
+Conferir o dry-run (sha256, `contr0l-0.3.0.apk`, assinatura) e então publicar
+sem `--dry-run`. A versão no `tauri.conf.json` já está em 0.3.0.
+
+**3. QR PIX e formulário na página** — é o que falta para religar o bloqueio com
+sentido. Hoje `PAID_APPS` está vazio de propósito (ver fase 13).
+
+**4. Religar o bloqueio:** `PAID_APPS = "contr0l"` no `wrangler.toml` do gateway
+e `wrangler deploy`. A página passa a exibir o campo de chave sozinha.
+
+**5. Versionar o deploy-base.** O `.gitignore` já está escrito lá. Hoje o
+gateway tem lógica de emissão e revogação que existe apenas no disco desta
+máquina.
+
+**6. Guardar o `ADMIN_TOKEN`** fora de pasta temporária, se ainda não foi feito.
+Quem tem esse token emite acesso pago de graça.
+
+---
+
 ### Fase 14 — Pagamento (PIX)
 
 **Compra única, sem assinatura.** O acesso não vence; a única forma de perder é

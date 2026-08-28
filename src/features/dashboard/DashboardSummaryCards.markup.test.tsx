@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import { DashboardSummaryCards } from "./DashboardSummaryCards";
+import { STRAWBERRY_DECORATIVE_ASSETS } from "../theme/strawberryAssets";
 
 function summaryCard(markup: string, label: string): string | undefined {
   return markup.match(
@@ -45,7 +46,7 @@ test("does not render decorative mascots outside Moranguinho", () => {
   expect(markup).not.toContain("pupcake");
 });
 
-test("mostra o totalizador de entradas e, sem arte propria, sem mascote", () => {
+test("mostra o totalizador de entradas, com mascote so se a arte existir", () => {
   const markup = renderToStaticMarkup(
     <DashboardSummaryCards
       realizedCents={375_000}
@@ -58,9 +59,14 @@ test("mostra o totalizador de entradas e, sem arte propria, sem mascote", () => 
   const entradas = summaryCard(markup, "Entradas do mês");
   expect(entradas).toBeDefined();
   expect(entradas).toContain("Entradas");
-  // O slot STRAWBERRY_DECORATIVE_ASSETS.entradas ainda nao tem arquivo:
-  // o card precisa renderizar sem <img> ate a arte existir.
-  expect(entradas).not.toContain("<img");
+
+  // O asset e resolvido por padrao de nome (import.meta.glob): pode existir ou
+  // nao. O que precisa valer nos dois casos e que o card renderize, e que o
+  // mascote apareca exatamente quando ha arte -- nunca um placeholder quebrado.
+  const temArte = Boolean(STRAWBERRY_DECORATIVE_ASSETS.entradas);
+  expect(entradas?.includes("<img")).toBe(temArte);
+
+  // E nunca reaproveita o mascote de outro card: cada um tem o seu.
   expect(entradas).not.toContain("custard");
   expect(entradas).not.toContain("pupcake");
 });
