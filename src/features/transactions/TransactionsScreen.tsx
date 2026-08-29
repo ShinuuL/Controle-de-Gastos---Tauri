@@ -233,13 +233,13 @@ export default function TransactionsScreen() {
             type="file"
             accept=".csv,text/csv,.pdf,application/pdf"
             className="hidden"
-            aria-label="Selecionar extrato em CSV do Itaú ou Nubank, ou PDF do Itaú"
+            aria-label="Selecionar extrato da conta em CSV (Itaú ou Nubank) ou em PDF"
             onChange={(event) => void handleImportFile(event)}
           />
           <Button
             type="button"
-            variant="ghost"
-            className="whitespace-nowrap border border-border"
+            variant="secondary"
+            className="whitespace-nowrap"
             disabled={importState.kind === "parsing"}
             onClick={() => importInputRef.current?.click()}
           >

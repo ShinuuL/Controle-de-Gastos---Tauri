@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBackGuard } from "../../lib/navigation/backGuard";
 import { AppearanceSelector } from "../../features/theme/AppearanceSelector";
 import Sidebar from "./Sidebar";
 import BottomNav from "./BottomNav";
@@ -9,6 +10,11 @@ import TransactionsScreen from "../../features/transactions/TransactionsScreen";
 
 export default function AppShell() {
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
+
+  // Estar fora do resumo é uma camada: o voltar do Android traz de volta para
+  // ele em vez de fechar o app. No resumo não há entrada empilhada, e aí voltar
+  // encerra o app -- o que o Android espera da tela inicial.
+  useBackGuard(activeTab !== "dashboard", () => setActiveTab("dashboard"));
 
   const screen =
     activeTab === "dashboard" ? (

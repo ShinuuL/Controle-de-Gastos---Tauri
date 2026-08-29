@@ -130,6 +130,29 @@ export async function updateCategoryBudget(
   });
 }
 
+/**
+ * Troca só a cor da categoria, inclusive das predefinidas: a proteção delas é
+ * contra exclusão e renomeação, não contra ajuste visual.
+ */
+export async function updateCategoryColor(
+  id: string,
+  color: string,
+): Promise<void> {
+  return traceOperation("category.updateColor", async () => {
+    const categoryId = id.trim();
+    if (!categoryId) throw new Error("Categoria não encontrada.");
+    if (!/^#[0-9A-Fa-f]{6}$/.test(color)) {
+      throw new Error("Informe uma cor hexadecimal válida.");
+    }
+    const db = await getDb();
+    const result = await db.execute(
+      "UPDATE categories SET color = $1 WHERE id = $2",
+      [color, categoryId],
+    );
+    if (result.rowsAffected !== 1) throw new Error("Categoria não encontrada.");
+  });
+}
+
 export async function deleteCategory(id: string): Promise<void> {
   return traceOperation("category.delete", async () => {
     const categoryId = id.trim();

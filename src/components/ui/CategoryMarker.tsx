@@ -1,3 +1,5 @@
+import { strawberryBerryColors } from "./categoryColor";
+
 interface CategoryMarkerProps {
   color: string;
   strawberry: boolean;
@@ -10,6 +12,7 @@ export default function CategoryMarker({
   size = "default",
 }: CategoryMarkerProps) {
   const sizeClass = size === "compact" ? "size-2" : "size-3";
+  const berry = strawberryBerryColors(color);
 
   if (!strawberry) {
     return (
@@ -33,15 +36,15 @@ export default function CategoryMarker({
     >
       <path
         d="M5.3 9.1c.2 6.2 2.6 10 6.7 12.1 4.1-2.1 6.5-5.9 6.7-12.1C16.6 7.6 14.3 7 12 7S7.4 7.6 5.3 9.1Z"
-        fill={color}
-        stroke="#4A2634"
+        fill={berry.fill}
+        stroke={berry.stroke}
         strokeWidth="1.5"
         strokeLinejoin="round"
       />
       <path
         d="M12 7 8.2 4.1l.8 3.8L5.3 6.8l2.4 3.4L12 8.7l4.3 1.5L18.7 6.8 15 7.9l.8-3.8L12 7Z"
         fill="#4B8B45"
-        stroke="#4A2634"
+        stroke={berry.stroke}
         strokeWidth="1.2"
         strokeLinejoin="round"
       />

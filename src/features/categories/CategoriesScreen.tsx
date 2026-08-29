@@ -10,22 +10,14 @@ import {
   deleteCategory,
   listCategoryBudgetProgress,
   updateCategoryBudget,
+  updateCategoryColor,
 } from "../../lib/repositories/categories";
 import type { CategoryBudgetProgress } from "../../lib/types";
 import { getCategoryBudgetProgress } from "./budget";
 import CategoryMarker from "../../components/ui/CategoryMarker";
+import ColorPicker, { SUGGESTED_COLORS } from "../../components/ui/ColorPicker";
 import { useTheme } from "../theme/ThemeProvider";
 
-const colors = [
-  "#F59E0B",
-  "#38BDF8",
-  "#8B5CF6",
-  "#22D3EE",
-  "#D946EF",
-  "#EF4444",
-  "#6366F1",
-  "#EC4899",
-];
 const inputClass =
   "h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-2 focus:outline-ring";
 
@@ -81,9 +73,14 @@ export default function CategoriesScreen() {
     setFormState(null);
     await reload();
   };
-  const handleBudget = async (budget: number | null) => {
+  const handleEdit = async (budget: number | null, color: string) => {
     if (formState?.mode !== "budget") return;
-    await updateCategoryBudget(formState.category.id, budget);
+    if (budget !== formState.category.budget_monthly) {
+      await updateCategoryBudget(formState.category.id, budget);
+    }
+    if (color !== formState.category.color) {
+      await updateCategoryColor(formState.category.id, color);
+    }
     setFormState(null);
     await reload();
   };
@@ -160,19 +157,21 @@ export default function CategoriesScreen() {
         open={formState !== null}
         onClose={() => setFormState(null)}
         title={
-          formState?.mode === "budget" ? "Editar orçamento" : "Nova categoria"
+          formState?.mode === "budget" ? "Editar categoria" : "Nova categoria"
         }
       >
         {formState?.mode === "create" && (
           <CategoryForm
+            strawberry={resolvedTheme === "strawberry"}
             onSubmit={handleCreate}
             onCancel={() => setFormState(null)}
           />
         )}
         {formState?.mode === "budget" && (
-          <BudgetForm
+          <CategoryEditForm
             category={formState.category}
-            onSubmit={handleBudget}
+            strawberry={resolvedTheme === "strawberry"}
+            onSubmit={handleEdit}
             onCancel={() => setFormState(null)}
           />
         )}
@@ -231,7 +230,7 @@ function CategoryCard({
             type="button"
             onClick={onEditBudget}
             className="flex size-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-background hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-            aria-label={`Editar orçamento de ${category.name}`}
+            aria-label={`Editar ${category.name}`}
           >
             <Pencil className="size-4" aria-hidden />
           </button>
@@ -279,9 +278,11 @@ function CategoryCard({
 }
 
 function CategoryForm({
+  strawberry,
   onSubmit,
   onCancel,
 }: {
+  strawberry: boolean;
   onSubmit: (
     name: string,
     color: string,
@@ -290,7 +291,7 @@ function CategoryForm({
   onCancel: () => void;
 }) {
   const [name, setName] = useState("");
-  const [color, setColor] = useState(colors[0]);
+  const [color, setColor] = useState(SUGGESTED_COLORS[0]);
   const [budget, setBudget] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -355,25 +356,7 @@ function CategoryForm({
           className={inputClass}
         />
       </div>
-      <fieldset>
-        <legend className="mb-2 text-sm font-medium">Cor</legend>
-        <div className="flex flex-wrap gap-2">
-          {colors.map((swatch) => (
-            <button
-              key={swatch}
-              type="button"
-              onClick={() => setColor(swatch)}
-              aria-label={`Selecionar cor ${swatch}`}
-              aria-pressed={color === swatch}
-              className="size-11 rounded-lg border-2 border-transparent focus-visible:outline-2 focus-visible:outline-ring"
-              style={{
-                backgroundColor: swatch,
-                borderColor: color === swatch ? "currentColor" : "transparent",
-              }}
-            />
-          ))}
-        </div>
-      </fieldset>
+      <ColorPicker value={color} onChange={setColor} strawberry={strawberry} />
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}
@@ -391,13 +374,15 @@ function CategoryForm({
   );
 }
 
-function BudgetForm({
+function CategoryEditForm({
   category,
+  strawberry,
   onSubmit,
   onCancel,
 }: {
   category: CategoryBudgetProgress;
-  onSubmit: (budget: number | null) => Promise<void>;
+  strawberry: boolean;
+  onSubmit: (budget: number | null, color: string) => Promise<void>;
   onCancel: () => void;
 }) {
   const [value, setValue] = useState(
@@ -405,19 +390,22 @@ function BudgetForm({
       ? ""
       : formatCentsInput(category.budget_monthly),
   );
+  const [color, setColor] = useState(category.color);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    const cents = parseToCents(value);
-    if (cents === null || cents <= 0 || !Number.isSafeInteger(cents)) {
+    // Campo vazio é categoria sem orçamento: sem isso, quem só quer trocar a
+    // cor de uma categoria que nunca teve limite ficava travado no formulário.
+    const cents = value.trim() === "" ? null : parseToCents(value);
+    if (cents !== null && (cents <= 0 || !Number.isSafeInteger(cents))) {
       setError("Informe um orçamento válido maior que zero.");
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
-      await onSubmit(cents);
+      await onSubmit(cents, color);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Erro ao salvar orçamento.",
@@ -430,7 +418,7 @@ function BudgetForm({
     setSubmitting(true);
     setError(null);
     try {
-      await onSubmit(null);
+      await onSubmit(null, color);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Erro ao limpar orçamento.",
@@ -442,8 +430,9 @@ function BudgetForm({
   return (
     <form noValidate onSubmit={submit} className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Defina um limite mensal para {category.name}.
+        Cor e limite mensal de {category.name}.
       </p>
+      <ColorPicker value={color} onChange={setColor} strawberry={strawberry} />
       <div>
         <label
           htmlFor="category-budget"

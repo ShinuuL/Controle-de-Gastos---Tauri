@@ -13,6 +13,7 @@ const METRIC_OPERATIONS = new Set([
   "category.listBudgetProgress",
   "category.create",
   "category.updateBudget",
+  "category.updateColor",
   "category.delete",
   "transaction.listMonth",
   "transaction.create",
