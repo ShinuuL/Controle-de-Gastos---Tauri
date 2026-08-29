@@ -130,8 +130,8 @@ Ordem sugerida. Os dois primeiros itens já foram entregues; o que resta é a ve
 entregue tinha fundo preto gravado; o recorte preservou os contornos do desenho
 e a arte foi reduzida a 600px (293 KB).
 
-**2. ~~Publicar a 0.4.0~~** — publicada em 2026-08-28:
-https://github.com/ShinuuL/Releases/releases/tag/contr0l-v0.4.0
+**2. ~~Publicar a 0.4.1~~** — publicada em 2026-08-29 (a 0.4.0 saiu em
+2026-08-28): https://github.com/ShinuuL/Releases/releases/tag/contr0l-v0.4.1
 
 Verificado no gateway: manifesto assinado válido para a chave pública do
 `deploy.toml`, e o binário baixado pelo gateway é byte a byte idêntico ao
@@ -139,17 +139,23 @@ compilado localmente.
 
 | | |
 |---|---|
-| versionName / Code | 0.4.0 / 4000 |
-| sha256 | `b5d0bde085bc00f79e7a5360720aaf0412e7b459702c363c0c61202f2412a51f` |
-| Tamanho | 72.809.001 bytes |
+| versionName / Code | 0.4.1 / 4001 |
+| sha256 | `6cf9ddfc219cd29e4cc49d8933657425d1553b0dfa81a2202703800dff71670d` |
+| Tamanho | 72.809.313 bytes |
 
 O ganho de ~1,8 MB sobre a 0.3.0 é o pdf.js, que entra em chunk próprio e só é
 carregado quando o usuário importa um PDF.
 
-Nesta versão: importação de extrato em PDF, correção do parser de CSV para o
+Na 0.4.0: importação de extrato em PDF, correção do parser de CSV para o
 formato que o app do Itaú realmente exporta, ações em massa na revisão da
 importação, e o totalizador de entradas passando a contar só o que já foi
 efetivado (com previstas virando realizadas na data).
+
+Na 0.4.1: importação de extrato do Nubank. O CSV passou a ter um parser por
+banco (`itauCsv.ts`, `nubankCsv.ts`) sobre um leitor comum, com o banco
+detectado pelo delimitador do cabeçalho antes de qualquer valor ser lido --
+"1.234" vale R$ 1.234,00 no Itaú e R$ 1,23 no Nubank, e adivinhar por valor
+erraria por fator de 1000 em silêncio.
 
 
 
