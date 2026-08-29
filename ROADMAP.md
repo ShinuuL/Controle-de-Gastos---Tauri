@@ -401,6 +401,53 @@ Itens (nenhum iniciado):
 - `VITE_DISTRIBUTION` e `decideAccess()` (declarados obsoletos na fase 15)
   voltam a ter uso -- reavaliar em vez de remover.
 
+### Fase 21 — Atualização automática no aparelho (avaliada em 2026-08-29, não iniciada)
+
+**Resposta curta: dá, mas "instalar sozinho" não existe no Android.** O app pode
+verificar, baixar e abrir o instalador; quem confirma a instalação é sempre o
+usuário, num diálogo do sistema. Instalação silenciosa só é possível para app
+com privilégio de sistema ou device owner (MDM corporativo), que não é o caso.
+
+**O plugin oficial não serve.** O `@tauri-apps/plugin-updater` declara suas
+dependências sob `cfg(not(any(target_os = "android", target_os = "ios")))` --
+ou seja, exclui Android por construção. Ele é o caminho pronto no desktop e não
+existe no alvo que a gente publica.
+
+**A parte difícil já está pronta.** O gateway já serve manifesto assinado com
+Ed25519 e o sha256 do APK (fases 13 e 16), e a landing já consome esse mesmo
+endpoint (`/v1/apps/contr0l/latest`). Falta o lado do app, não o canal.
+
+Itens:
+- Consultar o manifesto assinado na abertura, com espaçamento (uma vez por dia,
+  não a cada abertura) e falha silenciosa: sem rede, o app não pode travar nem
+  mostrar erro -- ele funciona offline por definição.
+- Verificar a assinatura Ed25519 **e** o sha256 antes de tocar no arquivo. Sem
+  isso, atualização automática vira o melhor vetor de ataque do produto: um
+  APK trocado no meio do caminho se instala sozinho.
+- Baixar e disparar o `PackageInstaller` via intent. Exige a permissão
+  `REQUEST_INSTALL_PACKAGES` no manifesto Android e que o usuário tenha liberado
+  "instalar apps desconhecidos" para o Contr0l -- é uma tela de sistema, e o
+  primeiro uso vai precisar de explicação na interface.
+- O `versionCode` precisa subir a cada release e o APK precisa estar assinado
+  com **o mesmo certificado**; o Android recusa a instalação por cima se o
+  certificado mudar. Já é o caso hoje, mas passa a ser requisito de correção e
+  não de higiene.
+- Aviso ao usuário antes de baixar: são ~70 MB por atualização, e baixar isso no
+  dado móvel de alguém sem perguntar é abuso.
+
+**Conflito a resolver antes, não durante.** Verificar atualização é requisição
+de rede recorrente, e a landing promete hoje "nenhuma requisição de rede" e
+exibe um contador em zero. A promessa cai junto com a da fase 20 -- as duas
+precisam ser reescritas de uma vez, e o texto precisa distinguir *dados
+financeiros* (que continuam sem sair do aparelho) de *verificação de versão*
+(que passa a existir). São coisas diferentes e a página tem que dizer isso com
+todas as letras.
+
+**Alternativa considerada e descartada por ora:** publicar na Play Store, que
+resolveria atualização automática de graça. Esbarra na diretriz de cobrança da
+loja, no mesmo conflito que a fase 18 já registrou para a App Store, e no fato
+de a distribuição por APK ser hoje o modelo escolhido.
+
 ### Fase 18 — iOS (fora de escopo, decidido em 2026-08-28)
 
 O Tauri 2 suporta iOS, mas nada disso pode ser feito na máquina atual: o
