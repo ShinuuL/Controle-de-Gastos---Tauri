@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Contr0l",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "identifier": "com.controle-gastos.app",
   "build": {
     "beforeDevCommand": "npm run dev",
