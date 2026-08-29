@@ -1,14 +1,21 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import ImportStatementModal from "./ImportStatementModal";
-import type { ParsedStatementRow } from "./itauCsv";
+import type { ReconciliationConflict } from "./reconciliation";
 
-const conflict: ParsedStatementRow = {
+const conflict: ReconciliationConflict = {
   sourceRow: 2,
   date: "2026-01-05",
   description: "Mercado Central Online SP",
   amount_cents: 1_250,
   nature: "saida",
+  existing: {
+    id: "expense-1",
+    date: "2026-01-04",
+    description: "Mercado",
+    amount_cents: 1_250,
+    nature: "saida",
+  },
 };
 
 function renderModal(): string {
@@ -47,5 +54,13 @@ describe("marcação acessível da prévia de importação", () => {
     )?.[1];
 
     expect(selectedTab).toContain("Conflitos · 1");
+  });
+
+  it("mostra a movimentação já existente que motivou o conflito", () => {
+    const markup = renderModal();
+
+    expect(markup).toContain("Já existe uma movimentação parecida");
+    expect(markup).toContain("Mercado");
+    expect(markup).toContain("1 dia de diferença");
   });
 });

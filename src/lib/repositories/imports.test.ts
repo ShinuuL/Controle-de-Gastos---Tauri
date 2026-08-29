@@ -55,7 +55,7 @@ describe("statement import repository", () => {
     invoke.mockReset();
   });
 
-  it("queries reconciliation candidates only by parameterized date, amount and nature", async () => {
+  it("queries reconciliation candidates by amount, nature and a parameterized date window", async () => {
     const fake = createCandidateFakeDb();
     getDb.mockResolvedValue(fake.db);
 
@@ -72,15 +72,32 @@ describe("statement import repository", () => {
     ]);
 
     expect(fake.selectCalls).toHaveLength(1);
-    expect(fake.selectCalls[0]?.query).toContain("e.date = $1");
-    expect(fake.selectCalls[0]?.query).toContain("e.amount_cents = $2");
-    expect(fake.selectCalls[0]?.query).toContain("e.nature = $3");
+    expect(fake.selectCalls[0]?.query).toContain("e.amount_cents = $1");
+    expect(fake.selectCalls[0]?.query).toContain("e.nature = $2");
+    expect(fake.selectCalls[0]?.query).toContain("e.date >= date($3, $4)");
+    expect(fake.selectCalls[0]?.query).toContain("e.date <= date($3, $5)");
     expect(fake.selectCalls[0]?.query).not.toContain("description =");
     expect(fake.selectCalls[0]?.values).toEqual([
-      "2026-01-10",
       1250,
       "saida",
+      "2026-01-10",
+      "-3 days",
+      "+3 days",
     ]);
+  });
+
+  it("deduplica pelo id a movimentação existente que cai na janela de várias linhas", async () => {
+    const fake = createCandidateFakeDb();
+    getDb.mockResolvedValue(fake.db);
+
+    await expect(
+      findReconciliationCandidates([
+        { date: "2026-01-10", amount_cents: 1250, nature: "saida" },
+        { date: "2026-01-11", amount_cents: 1250, nature: "saida" },
+      ]),
+    ).resolves.toHaveLength(1);
+
+    expect(fake.selectCalls).toHaveLength(2);
   });
 
   it("delegates confirmation atomically to the typed Tauri command", async () => {

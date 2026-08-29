@@ -14,12 +14,15 @@ import {
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import Button from "../../components/ui/Button";
+import { useBackGuard } from "../../lib/navigation/backGuard";
 import { formatSignedBRL } from "../../lib/currency";
 import { formatDateBR } from "../../lib/date";
 import type { ApprovedImportLine, Category } from "../../lib/types";
 import type { CsvIssue, ParsedNature, ParsedStatementRow } from "./itauCsv";
 import {
+  dayDistance,
   reconciliationKey,
+  type ReconciliationCandidate,
   type ReconciliationResult,
 } from "./reconciliation";
 
@@ -28,7 +31,7 @@ type ReviewGroup = "new" | "conflict";
 export type ReviewTab = ReviewGroup | "duplicate" | "issue";
 
 export interface ImportReviewLine {
-  row: ParsedStatementRow;
+  row: ParsedStatementRow & { existing?: ReconciliationCandidate };
   group: ReviewGroup;
   decision: ImportDecision;
   categoryId: string;
@@ -79,13 +82,32 @@ function categoryIdsByName(
   );
 }
 
+/**
+ * Categoria usada quando o extrato nao sugere nenhuma -- que e o caso de todo
+ * extrato real: nem Itau nem Nubank exportam coluna de categoria. Sem esse
+ * padrao a previa nasce com todas as linhas sem categoria e o botao de
+ * confirmar fica desabilitado, o que na pratica impedia a importacao.
+ *
+ * Prefere "Outros" (categoria predefinida e neutra); se ela nao existir, cai na
+ * primeira da lista, que ja vem ordenada por predefinidas primeiro.
+ */
+export function resolveFallbackCategoryId(
+  categories: ReadonlyArray<Pick<Category, "id" | "name">>,
+): string {
+  const outros = categories.find(
+    (category) => normalizeCategoryName(category.name) === "outros",
+  );
+  return outros?.id ?? categories[0]?.id ?? "";
+}
+
 export function createInitialImportReview(
   result: ReconciliationResult,
   categories: ReadonlyArray<Pick<Category, "id" | "name">>,
+  fallbackCategoryId = "",
 ): ImportReviewLine[] {
   const categoryByName = categoryIdsByName(categories);
   const reviewLine = (
-    row: ParsedStatementRow,
+    row: ImportReviewLine["row"],
     group: ReviewGroup,
   ): ImportReviewLine => ({
     row,
@@ -93,8 +115,8 @@ export function createInitialImportReview(
     decision: group === "new" ? "import" : "pending",
     categoryId: row.suggestedCategoryName
       ? (categoryByName.get(normalizeCategoryName(row.suggestedCategoryName)) ??
-        "")
-      : "",
+        fallbackCategoryId)
+      : fallbackCategoryId,
     nature: row.nature,
   });
 
@@ -109,11 +131,13 @@ export function syncSuggestedCategories(
   categories: ReadonlyArray<Pick<Category, "id" | "name">>,
 ): ImportReviewLine[] {
   const categoryByName = categoryIdsByName(categories);
+  const fallbackCategoryId = resolveFallbackCategoryId(categories);
   return review.map((item) => {
-    if (item.categoryId || !item.row.suggestedCategoryName) return item;
-    const categoryId = categoryByName.get(
-      normalizeCategoryName(item.row.suggestedCategoryName),
-    );
+    if (item.categoryId) return item;
+    const suggested = item.row.suggestedCategoryName
+      ? categoryByName.get(normalizeCategoryName(item.row.suggestedCategoryName))
+      : undefined;
+    const categoryId = suggested ?? fallbackCategoryId;
     return categoryId ? { ...item, categoryId } : item;
   });
 }
@@ -182,7 +206,7 @@ export function buildApprovedImportLines(
     amount_cents: row.amount_cents,
     date: row.date,
     nature,
-    fingerprint: reconciliationKey({ ...row, nature }),
+    fingerprint: row.externalId ?? reconciliationKey({ ...row, nature }),
   }));
 }
 
@@ -313,6 +337,12 @@ function BulkActions({
   );
 }
 
+function dayDistanceLabel(left: string, right: string): string {
+  const days = dayDistance(left, right);
+  if (days === 0) return "a mesma data";
+  return days === 1 ? "1 dia de diferença" : `${days} dias de diferença`;
+}
+
 function ReviewRow({
   item,
   categories,
@@ -340,6 +370,24 @@ function ReviewRow({
           {formatSignedBRL(signedAmount)}
         </p>
       </div>
+
+      {item.row.existing && (
+        <div className="mt-3 rounded-lg border border-warning/40 bg-surface p-3 text-sm">
+          <p className="font-medium">Já existe uma movimentação parecida</p>
+          <p className="mt-1 text-muted-foreground">
+            {item.row.existing.description} · {formatDateBR(item.row.existing.date)} ·{" "}
+            {formatSignedBRL(
+              item.row.existing.nature === "saida"
+                ? -item.row.existing.amount_cents
+                : item.row.existing.amount_cents,
+            )}
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            Mesmo valor e natureza, com {dayDistanceLabel(item.row.date, item.row.existing.date)}
+            . Importe só se forem lançamentos diferentes.
+          </p>
+        </div>
+      )}
 
       <fieldset className="mt-4">
         <legend className="mb-2 text-sm font-medium">
@@ -446,9 +494,16 @@ export default function ImportStatementModal({
     getInitialReviewTab(result, issues),
   );
   const [review, setReview] = useState(() =>
-    createInitialImportReview(result, categories),
+    createInitialImportReview(
+      result,
+      categories,
+      resolveFallbackCategoryId(categories),
+    ),
   );
   const status = getImportReviewStatus(review);
+
+  // Enquanto grava não dá para desistir pelo voltar, como o Cancelar e o X.
+  useBackGuard(open && !submitting, onClose);
 
   useEffect(() => {
     if (categoriesLoadedRef.current || categories.length === 0) return;
@@ -698,7 +753,14 @@ export default function ImportStatementModal({
 
           <footer className="sticky bottom-0 border-t border-border bg-surface/95 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:px-6 sm:pb-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p id={`${descriptionId}-status`} className="text-sm text-muted-foreground">
+              <p
+                id={`${descriptionId}-status`}
+                className={`text-sm font-medium ${
+                  status.canConfirm
+                    ? "text-muted-foreground"
+                    : "text-destructive"
+                }`}
+              >
                 {blockingMessage}
               </p>
               <div className="grid shrink-0 grid-cols-1 gap-2 sm:grid-cols-2">

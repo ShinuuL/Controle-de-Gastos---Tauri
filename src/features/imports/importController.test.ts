@@ -237,7 +237,7 @@ describe("controlador da importação na tela de movimentações", () => {
     expect(
       validateImportFileType({ name: "extrato.ofx", type: "application/x-ofx" }),
     ).toBe(
-      "Formato não suportado. Importe o extrato em CSV (Itaú ou Nubank) ou o PDF do Itaú.",
+      "Formato não suportado. Importe o extrato da conta em CSV (Itaú ou Nubank) ou em PDF.",
     );
   });
 

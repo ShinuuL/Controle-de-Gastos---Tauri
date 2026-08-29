@@ -7,15 +7,16 @@ import {
   type StatementIssue,
 } from "./statementValues";
 
-const MAX_BYTES = 5 * 1024 * 1024;
-const MAX_ROWS = 10_000;
+import {
+  extractPdfPages,
+  joinFragments,
+  LINE_TOLERANCE_Y,
+  MAX_PDF_BYTES,
+  MAX_PDF_LINES,
+  type PdfTextItem,
+} from "./pdfText";
 
-/** Um fragmento de texto do PDF, na origem do pdf.js (y cresce para cima). */
-export interface PdfTextItem {
-  x: number;
-  y: number;
-  text: string;
-}
+export type { PdfTextItem };
 
 /**
  * O extrato do Itaú é uma tabela de quatro colunas posicionadas por x. Os
@@ -28,25 +29,12 @@ const DESCRIPTION_MIN_X = 90;
 const AMOUNT_MIN_X = 400;
 const BALANCE_MIN_X = 490;
 
-/** Fragmentos dentro dessa distância vertical pertencem à mesma linha. */
-const LINE_TOLERANCE_Y = 2;
-
 export interface PdfStatementLine {
   sourceRow: number;
   date: string;
   description: string;
   amount: string;
   balance: string;
-}
-
-function joinFragments(items: PdfTextItem[]): string {
-  return items
-    .sort((left, right) => left.x - right.x)
-    .map((item) => item.text.trim())
-    .filter(Boolean)
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 /**
@@ -123,36 +111,9 @@ export function parseItauPdfLines(lines: PdfStatementLine[]): ParsedStatement {
   return { rows, issues };
 }
 
-async function extractPdfPages(bytes: ArrayBuffer): Promise<PdfTextItem[][]> {
-  // Importado sob demanda: o pdf.js é grande e só o caminho de PDF precisa dele.
-  const pdfjs = await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
-    import.meta.url,
-  ).toString();
-
-  const document = await pdfjs.getDocument({ data: new Uint8Array(bytes) }).promise;
-  try {
-    const pages: PdfTextItem[][] = [];
-    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-      const page = await document.getPage(pageNumber);
-      const content = await page.getTextContent();
-      pages.push(
-        content.items
-          .filter((item): item is Extract<typeof item, { str: string }> => "str" in item)
-          .map((item) => ({ x: item.transform[4], y: item.transform[5], text: item.str })),
-      );
-      page.cleanup();
-    }
-    return pages;
-  } finally {
-    await document.destroy();
-  }
-}
-
 export async function parseItauPdf(bytes: ArrayBuffer): Promise<ParsedStatement> {
   if (bytes.byteLength === 0) throw new Error("Arquivo PDF vazio");
-  if (bytes.byteLength > MAX_BYTES) throw new Error("Arquivo PDF excede o limite de 5 MiB");
+  if (bytes.byteLength > MAX_PDF_BYTES) throw new Error("Arquivo PDF excede o limite de 5 MiB");
 
   let pages: PdfTextItem[][];
   try {
@@ -162,7 +123,7 @@ export async function parseItauPdf(bytes: ArrayBuffer): Promise<ParsedStatement>
   }
 
   const lines = groupPdfLines(pages);
-  if (lines.length > MAX_ROWS) throw new Error("Arquivo PDF excede o limite de 10.000 linhas");
+  if (lines.length > MAX_PDF_LINES) throw new Error("Arquivo PDF excede o limite de 10.000 linhas");
 
   const parsed = parseItauPdfLines(lines);
   if (parsed.rows.length === 0 && parsed.issues.length === 0) {

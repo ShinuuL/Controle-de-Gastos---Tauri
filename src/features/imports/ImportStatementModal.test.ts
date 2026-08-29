@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ParsedStatementRow } from "./itauCsv";
-import type { ReconciliationResult } from "./reconciliation";
+import type {
+  ReconciliationConflict,
+  ReconciliationResult,
+} from "./reconciliation";
 import {
   applyBulkChanges,
   buildApprovedImportLines,
@@ -21,6 +24,17 @@ const row = (
   nature: "saida",
   ...overrides,
 });
+
+const conflict = (
+  sourceRow: number,
+  overrides: Partial<ParsedStatementRow> = {},
+): ReconciliationConflict => {
+  const parsed = row(sourceRow, overrides);
+  return {
+    ...parsed,
+    existing: { id: `expense-${sourceRow}`, ...parsed },
+  };
+};
 
 const result = (
   overrides: Partial<ReconciliationResult> = {},
@@ -58,7 +72,7 @@ describe("revisão da importação de extrato", () => {
     const review = createInitialImportReview(
       result({
         newRows: [row(2)],
-        conflicts: [row(3, { nature: "entrada" })],
+        conflicts: [conflict(3, { nature: "entrada" })],
       }),
       [],
     );
@@ -88,7 +102,7 @@ describe("revisão da importação de extrato", () => {
     const review = createInitialImportReview(
       result({
         newRows: [row(2), row(3)],
-        conflicts: [row(4)],
+        conflicts: [conflict(4)],
       }),
       [],
     ).map((item) => {
@@ -160,7 +174,7 @@ describe("revisão da importação de extrato", () => {
   it("escolhe primeiro grupo não vazio priorizando estados acionáveis", () => {
     expect(
       getInitialReviewTab(
-        result({ conflicts: [row(2)], duplicates: [row(3)] }),
+        result({ conflicts: [conflict(2)], duplicates: [row(3)] }),
         [],
       ),
     ).toBe("conflict");
@@ -195,7 +209,7 @@ describe("ações em massa da revisão", () => {
 
   it("resolve conflitos pendentes em massa", () => {
     const review = createInitialImportReview(
-      result({ conflicts: [row(2), row(3)] }),
+      result({ conflicts: [conflict(2), conflict(3)] }),
       [],
     );
     expect(getImportReviewStatus(review).pendingConflicts).toBe(2);
@@ -207,7 +221,7 @@ describe("ações em massa da revisão", () => {
 
   it("não vaza a mudança para linhas de outro grupo", () => {
     const review = createInitialImportReview(
-      result({ newRows: [row(2)], conflicts: [row(3)] }),
+      result({ newRows: [row(2)], conflicts: [conflict(3)] }),
       [],
     );
 

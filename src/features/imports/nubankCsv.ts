@@ -32,6 +32,7 @@ export function parseNubankCsv(bytes: ArrayBuffer): ParsedStatement {
   const dateIndex = findColumn(header, "Data");
   const amountIndex = findColumn(header, "Valor");
   const descriptionIndex = findColumn(header, "Descrição");
+  const identifierIndex = findColumn(header, "Identificador");
   if (dateIndex === undefined || amountIndex === undefined || descriptionIndex === undefined) {
     throw new Error("Cabeçalho CSV inválido: colunas obrigatórias ausentes");
   }
@@ -48,6 +49,10 @@ export function parseNubankCsv(bytes: ArrayBuffer): ParsedStatement {
     const date = parseStatementDate(record.fields[dateIndex] ?? "");
     const amount = parseSignedDotAmount(record.fields[amountIndex] ?? "");
     const description = (record.fields[descriptionIndex] ?? "").trim();
+    const externalId =
+      identifierIndex === undefined
+        ? ""
+        : (record.fields[identifierIndex] ?? "").trim();
 
     if (!date) {
       issues.push({ sourceRow, message: "Data inválida" });
@@ -62,6 +67,7 @@ export function parseNubankCsv(bytes: ArrayBuffer): ParsedStatement {
         description,
         amount_cents: amount.amount_cents,
         nature: amount.nature,
+        ...(externalId ? { externalId: `nubank:${externalId}` } : {}),
       });
     }
   });

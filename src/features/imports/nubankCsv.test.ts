@@ -29,6 +29,7 @@ describe("parseNubankCsv", () => {
         description: "Transferência recebida pelo Pix - GABRIEL DINIZ MAGALHAES",
         amount_cents: 1400,
         nature: "entrada",
+        externalId: "nubank:6a6e2b03-7712-4abd-a911-dd72bb1cf657",
       },
       {
         sourceRow: 3,
@@ -36,6 +37,7 @@ describe("parseNubankCsv", () => {
         description: "Transferência enviada pelo Pix - 99 TECNOLOGIA LTDA",
         amount_cents: 1312,
         nature: "saida",
+        externalId: "nubank:6a7108ed-9450-4d42-89a0-e818aabd2c4d",
       },
       {
         sourceRow: 4,
@@ -43,6 +45,7 @@ describe("parseNubankCsv", () => {
         description: "Transferência recebida pelo Pix - A T S CONTABILIDADE LTDA",
         amount_cents: 130248,
         nature: "entrada",
+        externalId: "nubank:6a74d518-2a78-4ae0-bd8b-44e62f5f48fa",
       },
       {
         sourceRow: 5,
@@ -50,6 +53,7 @@ describe("parseNubankCsv", () => {
         description: "Compra no débito - LOJAS AMERICANAS 1331",
         amount_cents: 1848,
         nature: "saida",
+        externalId: "nubank:6a74fdff-f0dd-4037-bc4f-f5c309ca7a49",
       },
     ]);
   });
