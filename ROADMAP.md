@@ -1,6 +1,6 @@
 # Roadmap — Controle de Gastos
 
-**Status geral:** Fase 9 (Migração do legado) concluída (2026-08-17). Próximas fases pendentes.
+**Status geral:** Fase 19 (Correções de importação, navegação e cor) concluída (2026-08-29). A venda está sequenciada depois da nuvem — ver "Sequenciamento decidido em 2026-08-29".
 
 ---
 
@@ -17,6 +17,7 @@
 | 7 | Android | ✅ Concluída | Projeto Tauri Android + preparação de assinatura de release | — |
 | 8 | Transactions | ✅ Concluída | Modelo de transações: contratos de domínio, cálculo de resultado mensal (realizado/projeção), repositório CRUD completo (list com JOIN, create, update, delete, traceOperation), tela de Movimentações + 4ª aba | 69 testes TS + 1 Rust, critic APPROVED, vision PASS |
 | 9 | Migração do legado | ✅ Concluída | Migração de Dashboard e CategoriesScreen do repositório expenses legado para modelo de transações | 60 testes TS + 1 Rust, lint/typecheck limpos, vision pendente |
+| 19 | Importação, navegação e cor | ✅ Concluída | Desbloqueio da importação Nubank, PDF de qualquer banco, duplicatas contra lançamento manual, botão voltar do Android, color picker de categoria | 214 testes TS, lint/typecheck/build limpos, validação em aparelho pendente |
 
 > **Nota sobre numeração:** As fases 1–7 seguem a ordem cronológica dos commits (2026-08-15). "Transactions" foi internamente chamada de "Fase 5" durante o desenvolvimento, mas corresponde à 8ª entrega cronológica.
 
@@ -122,6 +123,16 @@ aprovados. Entrega manual por WhatsApp resolve no volume atual.
 **Não requer backend, banco ou contas.** Turso, login e sincronização ficam para
 a fase 17.
 
+### Sequenciamento decidido em 2026-08-29
+
+A venda deixa de ser o próximo passo. A ordem passa a ser **17 (nuvem) → 14
+(Stripe) → 20 (trial e premium)**, porque trial e função paga precisam de
+identidade e de um entitlement que o usuário não consiga zerar reinstalando o
+app. O domínio próprio e a conta Stripe podem ser comprados e configurados em
+paralelo, já que não dependem de código do app. As pendências
+abaixo continuam válidas, mas os itens 3 e 4 (religar o bloqueio de download)
+esperam essa decisão.
+
 ### Pendências imediatas (para retomar em nova sessão)
 
 Ordem sugerida. Os dois primeiros itens já foram entregues; o que resta é a venda.
@@ -174,21 +185,36 @@ Quem tem esse token emite acesso pago de graça.
 
 ---
 
-### Fase 14 — Pagamento (PIX)
+### Fase 14 — Pagamento (Stripe, decidido em 2026-08-29)
 
-**Compra única, sem assinatura.** O acesso não vence; a única forma de perder é
-estorno (MED no PIX).
+**Stripe substitui o PIX manual.** A decisão anterior era QR PIX com confirmação
+à mão; com Stripe o pagamento é confirmado por webhook, e a emissão de acesso
+deixa de depender de alguém olhando o extrato. Isso derruba o principal motivo
+de a fase 14b existir como trabalho obrigatório -- o painel continua útil para
+suporte e revogação, mas não é mais o fluxo normal.
+
+**Domínio próprio será comprado** (decidido em 2026-08-29). Ele destrava três
+coisas que hoje estão paradas: e-mail transacional com domínio verificado (a
+fase 13 registrou que `onboarding@resend.dev` só entrega na própria conta
+Resend), a página fora de um subdomínio de terceiro, e os webhooks do Stripe
+apontando para um endereço estável.
 
 Itens:
-- QR PIX na página, com o e-mail do comprador coletado junto.
-- Confirmação manual enquanto não houver PSP com webhook.
-- Ao confirmar: gerar a chave, gravar no KV e enviar por e-mail.
-- Estorno: marcar a chave como `revoked` no KV — o gateway já recusa.
+- Conta Stripe e produto criado; checkout na página.
+- Webhook de pagamento confirmado → emitir acesso e enviar por e-mail.
+- Estorno/chargeback via webhook → revogar acesso automaticamente.
+- Decidir compra única vs. assinatura **antes** de criar o produto: a fase 20
+  (trial de 30 dias) empurra para assinatura, e trocar depois obriga a migrar
+  quem já comprou.
+- Stripe exige dados fiscais do vendedor e trata cartão — a revisão da fase 15b
+  deixa de ser opcional.
 
-### Fase 14b — Painel administrativo (obrigatório)
+### Fase 14b — Painel administrativo (rebaixado para suporte em 2026-08-29)
 
-Deixa de ser condicional: com PIX confirmado à mão, gerar chave e enviar e-mail
-**é o fluxo normal**, não a exceção.
+Era obrigatório porque, com PIX confirmado à mão, emitir chave e enviar e-mail
+era o fluxo normal. Com Stripe confirmando por webhook, o fluxo normal não passa
+por humano: o painel volta a ser ferramenta de suporte -- consultar, reenviar,
+revogar -- e não a única forma de entregar o que foi comprado.
 
 Itens:
 - Lista de pagamentos recebidos e chaves emitidas, com o e-mail de destino.
@@ -264,6 +290,116 @@ Itens:
 - **`ExpensesScreen`** é legado: filtra `nature = 'saida' AND status = 'realizado'`. A tela de Movimentações (`TransactionsScreen`) cobre o mesmo escopo com mais funcionalidade.
 - **Banco dev antigo:** ao recriar o schema (ex.: durante migrações), o arquivo `.db` antigo deve ser apagado para que o plugin recrie com o schema atualizado incluindo `nature`/`status`.
 - **Testes de componente/UI** (opcional, não planejado): hoje a UI é verificada via typecheck + build + passada visual (vision). Não há infra de jsdom/testing-library. Considerar se a complexidade da UI justificar.
+
+### Fase 19 — Importação, navegação e cor (✅ concluída em 2026-08-29)
+
+Correções levantadas na validação em aparelho e no emulador.
+
+**Importação do Nubank não estava quebrada no parser.** O CSV real lê 70 de 70
+linhas sem erro; o que travava era a prévia exigir categoria em todas elas, e
+nenhum extrato de banco traz coluna de categoria. A prévia passou a pré-preencher
+com "Outros" e a mensagem de bloqueio saiu do cinza claro para o vermelho.
+
+- A coluna `Identificador` do Nubank virou o fingerprint da importação:
+  reimportar o mesmo período reconhece as linhas, e o fingerprint sobrevive a
+  edição de natureza na prévia (a chave anterior derivava da natureza).
+- **PDF deixou de ser só do Itaú.** `genericPdf.ts` cobre os dois desenhos que
+  aparecem na prática -- tabular (Itaú, BB, Bradesco, Caixa) e por bloco de dia
+  (Nubank, Inter, C6) -- com o banco detectado em `statementPdf.ts` e o parser
+  posicional do Itaú mantido como caminho preferencial. Validado contra o PDF
+  real do Itaú: o parser genérico reproduz as mesmas 55 linhas, com soma
+  idêntica ao saldo impresso no extrato (R$ 8,74).
+- Dois defeitos só apareceram nessa validação: a detecção do Itaú olhava só a
+  primeira página (a marca está no rodapé das seguintes) e valores sem sinal
+  eram assumidos como saída. Agora o parser lê do próprio documento se ele marca
+  débito com `-` e infere o resto disso.
+
+**Duplicatas contra lançamento digitado à mão.** A regra anterior exigia 75% de
+semelhança de texto, o que inutilizava a checagem justamente no caso que
+importa: quem digita escreve "Uber", o extrato traz "Transferência enviada pelo
+Pix - 99 TECNOLOGIA LTDA". Agora mesmo valor e natureza dentro de **±3 dias**
+sempre vai para decisão manual, com a movimentação existente exibida ao lado. A
+janela existe porque quem digita usa a data da compra e o banco registra a da
+liquidação.
+
+**Botão voltar do Android.** Não havia tratamento nenhum: voltar fechava o app
+com o formulário preenchido dentro. `src/lib/navigation/backGuard.ts` ancora
+cada camada dispensável (aba fora do resumo, modal, confirmação) numa entrada do
+histórico. No resumo sem nada aberto continua sem entrada, e aí voltar encerra o
+app -- que é o esperado no Android. Sem alteração no Rust.
+
+Duas armadilhas resolvidas, ambas encontradas por teste:
+- `popstate` notifica **todos** os listeners registrados, então um listener por
+  camada faria um único toque fechar o modal e a aba de uma vez. Daí a pilha
+  própria, em que só o topo responde.
+- `history.back()` é assíncrono. Com o StrictMode montando, desmontando e
+  remontando cada efeito em desenvolvimento, o evento do `back()` da limpeza
+  chegava depois do remonte e era lido como voltar do usuário: o modal de
+  importação abria e fechava sozinho. Daí a contagem `pendingSelfPops`, e o
+  listener só sair quando não há camada **nem** evento próprio a consumir.
+
+**Cor de categoria.** Paleta fixa de oito cores virou seletor livre
+(`ColorPicker.tsx`), disponível na criação **e** na edição -- antes não havia
+como trocar a cor depois de criada. No tema moranguinho a cor passa por
+`strawberryBerryColors`: a matiz escolhida é preservada, a luminosidade entra na
+faixa 38–70% (branco não some na superfície clara, preto não some dentro do
+contorno) e o contorno do morango é derivado da cor, no lugar do marrom fixo que
+ora sumia no preenchimento ora o engolia.
+
+Efeito colateral necessário: no formulário de edição, orçamento vazio passou a
+significar "sem orçamento". Antes a validação travava quem só queria trocar a
+cor de uma categoria que nunca teve limite.
+
+O botão "Importar extrato" era `ghost` (só texto apagado) e virou sólido
+secundário -- variante nova em `Button.tsx`.
+
+**Pendente:** validação em aparelho real do voltar e do color picker, e um PDF
+de extrato do Nubank para conferir o parser genérico com arquivo de verdade.
+
+### Fase 20 — Trial de 30 dias e funções premium (decidida em 2026-08-29, não iniciada)
+
+**Decisões do desenvolvedor:**
+
+| | |
+|---|---|
+| Grátis | CRUD manual de movimentações e categorias, dashboard |
+| Premium | Importação de extrato (CSV e PDF) e orçamentos por categoria |
+| Trial | 30 dias, contados da primeira abertura |
+| Pré-requisito | A nuvem (fase 17) entra **antes** da venda |
+| Cobrança | Stripe, com domínio próprio (fase 14) |
+
+**Isto revê parte da fase 13.** Lá ficou decidido que "a chave protege o
+download, não o app", justamente para preservar as duas promessas da landing
+page: sem cadastro e sem requisição de rede. Trial e funções pagas exigem o
+oposto -- o app precisa saber quem é o usuário e até quando o acesso vale. As
+duas promessas da página precisam ser reescritas antes de a fase 20 entrar no
+ar, e o texto atual não pode sobreviver a ela.
+
+**Por que a nuvem vem antes.** Um trial guardado só no aparelho é contornado
+reinstalando o app ou limpando os dados; e a mesma identidade que valida o
+entitlement é a que a sincronização já exige. Fazer os dois de uma vez evita
+construir um controle local descartável. É a razão de a ordem ser 17 → 14 → 20,
+e não a numérica.
+
+**Dois princípios fixados pelo desenvolvedor em 2026-08-29**, que valem como
+critério de recusa e não como intenção vaga:
+
+1. **Os dados continuam seguros.** O que sobe é o `.db` cifrado no aparelho,
+   arquivo opaco para o servidor (fase 17). Entitlement, conta e pagamento são o
+   control plane e não tocam lançamento nenhum.
+2. **O app continua simples.** Trial e portão de acesso não podem virar uma
+   segunda camada de telas. Se uma função paga exigir fluxo próprio de conta
+   dentro do app, ela é redesenhada, não adicionada.
+
+Itens (nenhum iniciado):
+- Entitlement na nuvem, com carência offline: o app precisa continuar utilizável
+  sem rede por um período, ou quebra a promessa local-first que o produto vende.
+- Sincronização por comandos Rust tipados como autoridade do banco, conforme
+  AGENTS.md e a fase 17 -- não como segundo caminho de leitura no React.
+- Portões de UI nas telas pagas, com tela de upgrade no lugar da função.
+- Contagem do trial vinculada à conta, não ao aparelho.
+- `VITE_DISTRIBUTION` e `decideAccess()` (declarados obsoletos na fase 15)
+  voltam a ter uso -- reavaliar em vez de remover.
 
 ### Fase 18 — iOS (fora de escopo, decidido em 2026-08-28)
 
