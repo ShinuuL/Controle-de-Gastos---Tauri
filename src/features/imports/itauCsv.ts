@@ -1,6 +1,12 @@
 import {
+  decodeCsv,
+  findColumn,
+  normalizeHeader,
+  readCsvRecords,
+  MAX_CSV_ROWS,
+} from "./csvReader";
+import {
   isBalanceDescription,
-  normalizeAccents,
   parseSignedAmount,
   parseStatementDate,
   type ParsedStatement,
@@ -15,97 +21,36 @@ export type {
 } from "./statementValues";
 export type { StatementIssue as CsvIssue } from "./statementValues";
 
-const MAX_BYTES = 5 * 1024 * 1024;
-const MAX_ROWS = 10_000;
+export const ITAU_DELIMITER = ";";
 
-function decode(bytes: ArrayBuffer): string {
-  try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes).replace(/^\uFEFF/, "");
-  } catch {
-    return new TextDecoder("windows-1252").decode(bytes).replace(/^\uFEFF/, "");
-  }
-}
-
-interface CsvRecord {
-  fields: string[];
-  sourceRow: number;
-}
-
-function recordsOf(text: string): CsvRecord[] {
-  const records: CsvRecord[] = [];
-  let record: string[] = [];
-  let field = "";
-  let quoted = false;
-  let line = 1;
-  let recordStartLine = 1;
-
-  for (let index = 0; index < text.length; index += 1) {
-    const character = text[index];
-    if (quoted) {
-      if (character === '"') {
-        if (text[index + 1] === '"') {
-          field += '"';
-          index += 1;
-        } else {
-          quoted = false;
-        }
-      } else {
-        field += character;
-        if (character === "\n") line += 1;
-      }
-    } else if (character === '"' && field.length === 0) {
-      quoted = true;
-    } else if (character === ";") {
-      record.push(field);
-      field = "";
-    } else if (character === "\n") {
-      record.push(field.endsWith("\r") ? field.slice(0, -1) : field);
-      records.push({ fields: record, sourceRow: recordStartLine });
-      record = [];
-      field = "";
-      line += 1;
-      recordStartLine = line;
-    } else {
-      field += character;
-    }
-  }
-  if (quoted) throw new Error("Formato CSV não suportado: campo entre aspas não foi encerrado");
-  if (field.length > 0 || record.length > 0) {
-    record.push(field.endsWith("\r") ? field.slice(0, -1) : field);
-    records.push({ fields: record, sourceRow: recordStartLine });
-  }
-  return records;
-}
-
-function normalizeHeader(value: string): string {
-  return normalizeAccents(value.trim()).toLowerCase();
-}
-
+/**
+ * Extrato do Itau, nos dois layouts que o banco emite: o do internet banking
+ * (`Data;Histórico;Valor;Tipo`, valor sem sinal) e o exportado pelo app
+ * (`data;lancamentos;valor (R$);saldo (R$)`, sinal embutido no valor).
+ */
 export function parseItauCsv(bytes: ArrayBuffer): ParsedStatement {
-  if (bytes.byteLength === 0) throw new Error("Arquivo CSV vazio");
-  if (bytes.byteLength > MAX_BYTES) throw new Error("Arquivo CSV excede o limite de 5 MiB");
-  const text = decode(bytes);
-  if (!text.trim()) throw new Error("Arquivo CSV vazio");
-
-  const records = recordsOf(text).filter((record) => record.fields.some((field) => field.trim() !== ""));
+  const records = readCsvRecords(decodeCsv(bytes), ITAU_DELIMITER);
   if (records.length === 0) throw new Error("Arquivo CSV vazio");
   if (records[0].fields.length < 2) throw new Error("Formato CSV não suportado");
+
   const header = records[0].fields.map(normalizeHeader);
-  const find = (...names: string[]) => names.map(normalizeHeader).map((name) => header.indexOf(name)).find((index) => index >= 0);
-  const dateIndex = find("Data");
+  const dateIndex = findColumn(header, "Data");
   // "Lançamentos" é o cabeçalho do extrato exportado pelo app; "Histórico" e
   // "Lançamento" são os do extrato do internet banking.
-  const descriptionIndex = find("Histórico", "Lançamento", "Lançamentos");
-  const amountIndex = find("Valor", "Valor (R$)");
+  const descriptionIndex = findColumn(header, "Histórico", "Lançamento", "Lançamentos");
+  const amountIndex = findColumn(header, "Valor", "Valor (R$)");
   // Só o extrato do internet banking traz "Tipo". Sem ela, a natureza vem do
   // sinal do próprio valor.
-  const typeIndex = find("Tipo");
-  const categoryIndex = find("Categoria");
+  const typeIndex = findColumn(header, "Tipo");
+  const categoryIndex = findColumn(header, "Categoria");
   if (dateIndex === undefined || descriptionIndex === undefined || amountIndex === undefined) {
     throw new Error("Cabeçalho CSV inválido: colunas obrigatórias ausentes");
   }
+
   const dataRecords = records.slice(1);
-  if (dataRecords.length > MAX_ROWS) throw new Error("Arquivo CSV excede o limite de 10.000 linhas");
+  if (dataRecords.length > MAX_CSV_ROWS) {
+    throw new Error("Arquivo CSV excede o limite de 10.000 linhas");
+  }
 
   const rows: ParsedStatementRow[] = [];
   const issues: StatementIssue[] = [];
@@ -140,5 +85,6 @@ export function parseItauCsv(bytes: ArrayBuffer): ParsedStatement {
       });
     }
   });
+
   return { rows, issues };
 }

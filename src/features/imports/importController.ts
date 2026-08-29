@@ -1,5 +1,6 @@
-import { parseItauCsv, type CsvIssue, type ParsedStatement } from "./itauCsv";
+import type { CsvIssue, ParsedStatement } from "./itauCsv";
 import { parseItauPdf } from "./itauPdf";
+import { parseStatementCsv } from "./statementCsv";
 import type { ReconciliationResult } from "./reconciliation";
 import type { ReconciliationCandidate } from "./reconciliation";
 import type { ApprovedImportLine } from "../../lib/types";
@@ -77,7 +78,7 @@ async function parseImportBytes(
   bytes: ArrayBuffer,
   kind: ImportFileKind,
 ): Promise<ParsedStatement> {
-  const parsed = kind === "pdf" ? await parseItauPdf(bytes) : parseItauCsv(bytes);
+  const parsed = kind === "pdf" ? await parseItauPdf(bytes) : parseStatementCsv(bytes);
   const reviewSizeError = validateImportReviewSize(
     parsed.rows.length + parsed.issues.length,
   );
@@ -230,7 +231,7 @@ export function validateImportFileType(file: {
 
   return supported
     ? null
-    : "Formato não suportado. Importe o extrato do Itaú em CSV ou PDF.";
+    : "Formato não suportado. Importe o extrato em CSV (Itaú ou Nubank) ou o PDF do Itaú.";
 }
 
 export function validateImportReviewSize(rowCount: number): string | null {

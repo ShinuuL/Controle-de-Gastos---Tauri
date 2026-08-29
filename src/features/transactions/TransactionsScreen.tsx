@@ -233,7 +233,7 @@ export default function TransactionsScreen() {
             type="file"
             accept=".csv,text/csv,.pdf,application/pdf"
             className="hidden"
-            aria-label="Selecionar extrato CSV ou PDF do Itaú"
+            aria-label="Selecionar extrato em CSV do Itaú ou Nubank, ou PDF do Itaú"
             onChange={(event) => void handleImportFile(event)}
           />
           <Button

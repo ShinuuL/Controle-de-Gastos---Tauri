@@ -57,6 +57,26 @@ export function parseSignedAmount(value: string): SignedAmount | null {
 }
 
 /**
+ * Valor no padrao do Nubank: ponto decimal e nenhum separador de milhar
+ * (14.00, -13.12, 1302.48).
+ *
+ * Fica separado de `parseSignedAmount` de proposito. Um parser unico que
+ * aceitasse os dois padroes leria "1.234" como 1234,00 num banco e 1,23 no
+ * outro -- erro de fator 1000 em silencio. Quem escolhe e o parser do banco,
+ * que ja sabe qual formato o arquivo usa.
+ */
+export function parseSignedDotAmount(value: string): SignedAmount | null {
+  const normalized = value.trim().replace(/\s/g, "").replace(/^R\$/i, "");
+  const match = /^([+-]?)(\d+(?:\.\d{1,2})?)$/.exec(normalized);
+  if (!match) return null;
+  const [, sign, digits] = match;
+  const [whole, decimal = ""] = digits.split(".");
+  const cents = Number(`${whole}${decimal.padEnd(2, "0")}`);
+  if (!Number.isSafeInteger(cents) || cents <= 0) return null;
+  return { amount_cents: cents, nature: sign === "-" ? "saida" : "entrada" };
+}
+
+/**
  * Linhas de saldo ("SALDO DO DIA", "SALDO ANTERIOR", "SALDO TOTAL DISPONÍVEL")
  * não são lançamentos: elas repetem o acumulado do dia na coluna de saldo. Não
  * viram issue porque não há nada que o usuário possa corrigir nelas.
