@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Contr0l — controle de gastos que fica no seu aparelho</title>
-<meta name="description" content="App de controle de gastos para Android que funciona sem internet e sem conta. Os lançamentos ficam gravados no celular, não em servidor.">
+<meta name="description" content="App de controle de gastos para Android que funciona offline. Os lançamentos ficam gravados no celular e ninguém tem acesso a eles — nem o desenvolvedor.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
@@ -312,12 +312,12 @@ a{color:inherit}
   <div class="env hero">
     <div>
       <div class="sobe">
-        <p class="rotulo">Android · gratuito · sem cadastro</p>
+        <p class="rotulo">Android · seus lançamentos, só seus</p>
         <h1>Suas finanças ficam <em>no seu aparelho</em>.</h1>
         <p class="hero__sub">
-          Contr0l é um app de controle de gastos que funciona sem internet e sem
-          conta. Os lançamentos ficam gravados no celular — não passam por
-          servidor nenhum, nem pelo meu.
+          Contr0l é um app de controle de gastos que funciona offline. Os
+          lançamentos ficam gravados no celular e <strong>ninguém tem acesso a
+          eles — nem eu</strong>. É a única promessa que faço, e ela não muda.
         </p>
       </div>
 
@@ -512,18 +512,26 @@ a{color:inherit}
   <div class="env duas">
     <div>
       <p class="rotulo">Onde os dados ficam</p>
-      <h2>Não existe servidor para vazar.</h2>
+      <h2>Ninguém tem acesso aos seus lançamentos.</h2>
     </div>
     <div class="corpo">
       <p>
-        O Contr0l guarda tudo num banco SQLite dentro do próprio aparelho. Não há
-        cadastro, não há login, e o app <strong>não faz nenhuma requisição de rede</strong>
-        durante o uso normal.
+        O Contr0l guarda tudo num banco SQLite dentro do próprio aparelho. Você
+        lança, consulta e fecha o mês sem internet, porque a leitura e a escrita
+        acontecem no celular — não em um servidor meu.
       </p>
       <p>
-        Isso tem uma consequência que prefiro dizer na frente: <strong>se você
-        desinstalar o app ou perder o celular, os lançamentos vão junto</strong>.
-        Não tenho como recuperar — eu não tenho cópia.
+        <strong>O que eu prometo é uma coisa só, e para sempre: eu não tenho, e
+        não vou ter, acesso aos seus lançamentos.</strong> Se um dia o app
+        verificar atualização ou você ligar o backup na nuvem, isso continua
+        valendo — o que sobe é um arquivo cifrado no seu aparelho, que o servidor
+        não consegue abrir. Prefiro prometer pouco e cumprir do que prometer
+        "zero internet" e ter que voltar atrás depois.
+      </p>
+      <p>
+        Isso tem uma consequência que prefiro dizer na frente: <strong>hoje, se
+        você desinstalar o app ou perder o celular, os lançamentos vão
+        junto</strong>. Não tenho como recuperar — eu não tenho cópia.
       </p>
       <p>
         Sincronização em nuvem está no plano, opcional e com criptografia feita no
@@ -534,20 +542,20 @@ a{color:inherit}
 
       <ul class="itens" style="margin-top:2rem">
         <li class="item">
-          <h3 data-v="0">contas</h3>
-          <p>Instalou, abriu, já está usando. Sem e-mail, sem senha, sem verificação.</p>
+          <h3 data-v="0">pessoas com acesso</h3>
+          <p>Nem eu, nem provedor, nem parceiro. Não existe painel onde eu veja o que você gasta.</p>
         </li>
         <li class="item">
           <h3 data-v="0">rastreadores</h3>
           <p>Sem anúncios, sem SDK de terceiros, sem telemetria enviada para fora.</p>
         </li>
         <li class="item">
-          <h3 data-v="0">requisições de rede</h3>
-          <p>O app funciona no metrô, no avião e no interior sem sinal. Não existe estado "carregando".</p>
+          <h3 data-v="0">lançamentos enviados em claro</h3>
+          <p>O app funciona no metrô, no avião e no interior sem sinal — e o que sair daqui, sai cifrado.</p>
         </li>
         <li class="item">
-          <h3 data-v="0">bytes em servidor</h3>
-          <p>Não tenho cópia dos seus lançamentos, e não tenho como obter uma.</p>
+          <h3 data-v="0">bytes legíveis por mim</h3>
+          <p>Não tenho cópia legível dos seus lançamentos, e não tenho como obter uma.</p>
         </li>
       </ul>
     </div>
@@ -610,7 +618,7 @@ a{color:inherit}
           <dt>Permissões</dt>
           <dd>
             <code>INTERNET</code>
-            <span class="spec__n">Declarada pelo componente de webview do Android e não utilizada: o app não faz requisições de rede.</span>
+            <span class="spec__n">Declarada pelo componente de webview do Android. Nenhum lançamento é enviado por ela: os dados financeiros ficam no aparelho.</span>
           </dd>
         </div>
         <div class="spec"><dt>sha256 do APK</dt><dd class="quebra" id="h2">6cf9ddfc219cd29e4cc49d8933657425d1553b0dfa81a2202703800dff71670d</dd></div>

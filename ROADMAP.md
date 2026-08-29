@@ -435,13 +435,21 @@ Itens:
 - Aviso ao usuário antes de baixar: são ~70 MB por atualização, e baixar isso no
   dado móvel de alguém sem perguntar é abuso.
 
-**Conflito a resolver antes, não durante.** Verificar atualização é requisição
-de rede recorrente, e a landing promete hoje "nenhuma requisição de rede" e
-exibe um contador em zero. A promessa cai junto com a da fase 20 -- as duas
-precisam ser reescritas de uma vez, e o texto precisa distinguir *dados
-financeiros* (que continuam sem sair do aparelho) de *verificação de versão*
-(que passa a existir). São coisas diferentes e a página tem que dizer isso com
-todas as letras.
+**Conflito resolvido em 2026-08-29, antes de escrever código.** Verificar
+atualização é requisição de rede recorrente, e a landing prometia "nenhuma
+requisição de rede" com um contador em zero -- promessa que também cairia com o
+trial da fase 20.
+
+**Decisão do desenvolvedor: a página passa a fazer uma promessa só --
+ninguém tem acesso aos dados financeiros -- e essa não muda.** "Sem cadastro",
+"gratuito" e "zero requisições de rede" saíram do texto: eram verdade no
+recorte de hoje e viravam propaganda falsa na fase seguinte. Os contadores
+foram trocados pelos que sobrevivem a nuvem, trial e atualização automática
+(pessoas com acesso, lançamentos enviados em claro, bytes legíveis por mim).
+
+A regra que fica para qualquer texto novo: distinguir *dado financeiro* -- que
+não sai do aparelho em claro, nunca -- de *metadado de funcionamento* (versão,
+entitlement), que passa a trafegar. Prometer pouco e cumprir.
 
 **Alternativa considerada e descartada por ora:** publicar na Play Store, que
 resolveria atualização automática de graça. Esbarra na diretriz de cobrança da
