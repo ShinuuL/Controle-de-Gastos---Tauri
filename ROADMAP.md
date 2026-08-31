@@ -1,6 +1,6 @@
 # Roadmap — Controle de Gastos
 
-**Status geral:** Fase 19 (Correções de importação, navegação e cor) concluída (2026-08-29). A venda está sequenciada depois da nuvem — ver "Sequenciamento decidido em 2026-08-29".
+**Status geral:** Fase 19 concluída (2026-08-29). Em andamento: fase 11/17 (nuvem) — cripto, contas, entitlement assinado e backup cifrado entregues (2026-08-29/30, passos 1–5 da spec). O backup usa **KV** em vez de R2, porque o R2 exige cartão. Sessão persistida e push automático entregues em 2026-08-30. Falta aplicar a migração 002 e o deploy do gateway, validar em aparelho e reescrever as promessas da landing page. A venda está sequenciada depois da nuvem — ver "Sequenciamento decidido em 2026-08-29".
 
 ---
 
@@ -49,9 +49,22 @@ Fora deste recorte: cartão de crédito, OFX, PDF/XLS, outros bancos e categoriz
 
 Design aprovado: `docs/superpowers/specs/2026-08-24-importacao-csv-itau-design.md`.
 
-### Fase 11 — Nuvem (futuro, não iniciado)
+### Fase 11 — Nuvem (= fase 17; desenho de implementação aprovado em 2026-08-29)
 
-SQLite é local. Futura sincronização nuvem deve usar comandos Rust tipados como autoridade do banco. Evitar misturar acesso local e remoto no frontend.
+Esta entrada e a **fase 17** são a mesma fase: aqui ficou o stub de uma linha,
+lá ficou o detalhamento. O desenho de implementação está em
+[`docs/superpowers/specs/2026-08-29-nuvem-sync-design.md`](docs/superpowers/specs/2026-08-29-nuvem-sync-design.md)
+e fecha o que o doc de arquitetura deixava em aberto: formato do envelope
+cifrado, derivação de chaves, esquema do control plane, rotas, comandos Rust e
+ordem de implementação.
+
+**Backend decidido em 2026-08-29:** estender o gateway Cloudflare que já existe
+(Workers + KV da fase 13), acrescentando R2 para o `.db` cifrado e **D1** para o
+control plane — no lugar do serviço TypeScript separado e do Turso que o doc de
+arquitetura recomendava. Um Worker só, uma conta a menos.
+
+SQLite continua local e é a fonte de leitura; a sincronização entra por comandos
+Rust tipados, nunca como segundo caminho de leitura no React.
 
 ---
 
@@ -176,9 +189,10 @@ sentido. Hoje `PAID_APPS` está vazio de propósito (ver fase 13).
 **4. Religar o bloqueio:** `PAID_APPS = "contr0l"` no `wrangler.toml` do gateway
 e `wrangler deploy`. A página passa a exibir o campo de chave sozinha.
 
-**5. Versionar o deploy-base.** O `.gitignore` já está escrito lá. Hoje o
-gateway tem lógica de emissão e revogação que existe apenas no disco desta
-máquina.
+**5. ~~Versionar o deploy-base~~** — verificado em 2026-08-29: já estava feito.
+`gateway/src/index.js` e `gateway/wrangler.toml` estão versionados e no
+`origin` (`ShinuuL/deploy-base`), com a árvore limpa. A lógica de emissão e
+revogação de licenças não está mais só no disco.
 
 **6. Guardar o `ADMIN_TOKEN`** fora de pasta temporária, se ainda não foi feito.
 Quem tem esse token emite acesso pago de graça.
@@ -255,6 +269,34 @@ Itens:
 
 ### Fase 16 — Landing page e release
 
+**Detecção de plataforma entregue em 2026-08-30.** A landing escolhe o download
+pelo user agent: Android recebe o APK, Windows recebe o instalador (com o APK ao
+lado, para quem quer mandar para o próprio celular) e iPhone recebe a explicação
+de que não há versão. Enquanto o `.exe` não existir, quem está no Windows vê um
+aviso em vez de um botão que não baixa nada. A regra está travada em
+`landing/plataforma.test.js` (13 testes).
+
+**A próxima publicação precisa incluir o `.exe`.** `npm run windows:release`
+compila e prepara o instalador, e a entrada correspondente já está no
+`deploy.toml` — o `publish` **recusa** enquanto o arquivo não existir, de
+propósito: publicar sem ele deixaria a página oferecendo um botão vazio.
+
+**Build do Windows validado em 2026-08-30.** `npm run windows:release` roda de
+ponta a ponta sem pendência de ferramenta: o Tauri baixa o WiX sozinho e gera
+MSI **e** NSIS. O instalador tem **9,0 MB** contra 72,8 MB do APK — o APK carrega
+as bibliotecas nativas de todas as ABIs, o `.exe` usa o WebView2 do sistema.
+
+| | |
+|---|---|
+| Arquivo | `dist-windows/contr0l.exe` (NSIS) |
+| Tamanho | 9.020.721 bytes |
+| Também gerado | `Contr0l_0.4.1_x64_en-US.msi` (não publicado) |
+
+O instalador **não é assinado** com certificado de editor, então o SmartScreen
+avisa na primeira execução — a landing page já explica isso nos passos de
+instalação do Windows.
+
+
 Itens:
 - Página de apresentação com download e checkout.
 - `portal/index.html` do deploy-base tem `GATEWAY` fixo no código e rotula todo artefato como "instalador" — precisa tratar `kind = "apk"`.
@@ -267,6 +309,11 @@ sincronização que faz dados financeiros saírem do aparelho, e é aqui que a
 decisão passa a valer. Também é aqui que contas e identidade voltam a ser
 necessárias — os placeholders em `src/features/auth/` pertencem a esta fase,
 não à compra.
+
+**Desenho de implementação aprovado em 2026-08-29:**
+[`docs/superpowers/specs/2026-08-29-nuvem-sync-design.md`](docs/superpowers/specs/2026-08-29-nuvem-sync-design.md).
+Ele substitui o Turso por **D1** e o backend separado pelo **gateway Cloudflare
+existente**; o resto desta seção continua valendo.
 
 **Turso/libSQL aprovado em 2026-08-27, com um ajuste:** o sync nativo do libSQL
 (embedded replica) opera no nível das linhas e exige que o servidor leia os
@@ -355,6 +402,36 @@ secundário -- variante nova em `Button.tsx`.
 
 **Pendente:** validação em aparelho real do voltar e do color picker, e um PDF
 de extrato do Nubank para conferir o parser genérico com arquivo de verdade.
+
+### Fase 21 — Fundo do tema moranguinho em vetor (✅ 2026-08-30)
+
+O fundo do desktop era um AVIF de **740x493** esticado com `background-size:
+cover`. Numa janela 1080p isso amplia cerca de 2,6x em cada eixo — daí a
+pixelização, que só apareceu quando o app passou a rodar no Windows. No celular
+o problema não existia: lá o CSS usava outro arquivo, com regra que só reduz.
+
+A arte já era **um padrão que se repete**, e padrão não precisa de bitmap. Os
+dois arquivos (74,4 KB somados) viraram um ladrilho SVG de **4,7 KB**, nítido em
+qualquer tamanho de janela e qualquer densidade de tela, com um único caminho no
+CSS para celular e desktop.
+
+Paleta e escala foram **medidas** no JPEG original, não estimadas a olho: morango
+de 31x34 px, um a cada ~6.400 px² de fundo. O resultado foi conferido contando
+as frutas da imagem renderizada — 63 num recorte de 675x600, a mesma contagem da
+arte original.
+
+As posições são sorteadas com distância mínima num espaço **toroidal** (a
+distância considera a volta pelas bordas), o que faz o ladrilho encaixar consigo
+mesmo sem colar duas frutas na emenda. Fileiras fixas foram tentadas antes e o
+olho enxergava as colunas: a estampa virava papel quadriculado. O gerador está
+em `scripts/gerar-fundo-morangos.py`, com semente fixa para a saída ser idêntica
+a cada rodada.
+
+Duas armadilhas encontradas no caminho:
+- **Comentário XML não aceita dois hifens seguidos**, e o estilo de comentário
+  deste projeto usa travessão duplo o tempo todo. O SVG não carregava inteiro.
+- Estimar tamanho a olho errou duas vezes seguidas, em direções opostas (metade
+  e depois o dobro). Medir resolveu na terceira.
 
 ### Fase 20 — Trial de 30 dias e funções premium (decidida em 2026-08-29, não iniciada)
 
