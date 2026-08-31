@@ -95,6 +95,40 @@ pub fn migrations() -> Vec<Migration> {
         "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 5,
+            description: "add_cloud_entitlement_cache",
+            sql: r#"
+            -- Ultimo entitlement conhecido, para o app continuar utilizavel sem
+            -- rede. Uma linha so: o app atende uma conta por vez.
+            --
+            -- A assinatura fica junto porque e ela que faz este cache valer:
+            -- sem ela, trocar 'revogado' por 'ativo' aqui seria um editor de
+            -- SQLite de distancia. Nao ha dado financeiro nesta tabela.
+            CREATE TABLE IF NOT EXISTS cloud_entitlement (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                account_id TEXT NOT NULL,
+                status TEXT NOT NULL,
+                expires_at TEXT,
+                issued_at TEXT NOT NULL,
+                signature TEXT
+            );
+
+            -- De qual versao do backup ESTE aparelho partiu.
+            --
+            -- Precisa viver junto do banco, e nao em memoria: e ela que o
+            -- If-Match envia. Se o aparelho perguntasse a versao atual ao
+            -- servidor antes de enviar, todo push venceria, e o aparelho que
+            -- passou semanas offline apagaria em silencio o trabalho do outro.
+            CREATE TABLE IF NOT EXISTS cloud_backup_state (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                account_id TEXT NOT NULL,
+                version INTEGER NOT NULL,
+                synced_at TEXT NOT NULL
+            );
+        "#,
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -105,7 +139,7 @@ mod tests {
     #[test]
     fn migrations_enforce_positive_expense_amounts_without_rebuilding_expenses() {
         let migrations = migrations();
-        assert_eq!(migrations.len(), 4);
+        assert_eq!(migrations.len(), 5);
 
         let initial = migrations
             .iter()

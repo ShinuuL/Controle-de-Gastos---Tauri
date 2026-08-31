@@ -1,50 +1,74 @@
 /**
- * PLACEHOLDER -- autenticacao e consulta de entitlement.
+ * Conta na nuvem, vista do front.
  *
- * Contrato pretendido com o backend (mesma conta do site e do app):
+ * Nao ha `fetch` aqui, e nao deve haver: o AGENTS.md manda a nuvem passar por
+ * comandos Rust tipados, e a spec da fase 11/17 estende isso a cripto. Senha,
+ * KEK, DEK e token de sessao vivem no Rust; o que atravessa a ponte e so
+ * e-mail, `account_id` e a validade da sessao.
  *
- *   POST /v1/auth/login      { email, senha }        -> { token, session }
- *   POST /v1/auth/refresh    { token }               -> { token, session }
- *   GET  /v1/me/entitlement  Authorization: Bearer   -> { status, expires_at }
- *
- * O entitlement devolvido aqui serve so para a UI. A autoridade e o backend:
- * toda rota de dados revalida o pagamento antes de responder, porque um
- * cliente pode ser modificado.
+ * Contrato em `src-tauri/src/cloud.rs`.
  */
 
-import { NotConfiguredError, endpoint, isConfigured } from "../../lib/cloud/gateway";
-import type { EntitlementStatus, Session } from "./session";
+import { invoke } from "@tauri-apps/api/core";
+import type { Entitlement } from "./session";
 
-export interface Credentials {
+export interface Sessao {
+  account_id: string;
   email: string;
-  senha: string;
+  /** ISO 8601. Validade do TOKEN de sessao, nao do entitlement. */
+  expires_at: string;
 }
 
-export async function login(_credentials: Credentials): Promise<Session> {
-  if (!isConfigured()) throw new NotConfiguredError("login");
-  // TODO(fase 13): POST endpoint("/v1/auth/login"), guardar token no
-  // secure storage do SO (nao em localStorage) e devolver a sessao.
-  throw new NotConfiguredError("login");
+/** Erro vindo do Rust, ja traduzido para uma frase de tela. */
+export interface CloudError {
+  codigo: string;
+  mensagem: string;
 }
 
-export async function logout(): Promise<void> {
-  if (!isConfigured()) throw new NotConfiguredError("logout");
-  // TODO(fase 13): invalidar o token no backend e limpar o storage local.
-  throw new NotConfiguredError("logout");
+export function ehCloudError(erro: unknown): erro is CloudError {
+  return (
+    typeof erro === "object" &&
+    erro !== null &&
+    typeof (erro as CloudError).codigo === "string" &&
+    typeof (erro as CloudError).mensagem === "string"
+  );
 }
 
-export async function restoreSession(): Promise<Session | null> {
-  // Sem backend configurado nao ha sessao para restaurar. Devolve null em vez
-  // de lancar, porque isso roda no boot do app e nao pode derrubar a tela.
-  if (!isConfigured()) return null;
-  // TODO(fase 13): ler token do secure storage e chamar /v1/auth/refresh.
-  return null;
+/**
+ * Mensagem para o usuario a partir de qualquer coisa que o `invoke` rejeite.
+ * Um erro sem formato conhecido nao pode virar "[object Object]" em tela.
+ */
+export function mensagemDoErro(erro: unknown): string {
+  if (ehCloudError(erro)) return erro.mensagem;
+  return "Nao foi possivel concluir. Tente de novo.";
 }
 
-export async function fetchEntitlement(): Promise<EntitlementStatus> {
-  if (!isConfigured()) throw new NotConfiguredError("fetchEntitlement");
-  // TODO(fase 14): GET endpoint("/v1/me/entitlement") apos o webhook do
-  // Stripe/PIX confirmar o pagamento.
-  void endpoint;
-  throw new NotConfiguredError("fetchEntitlement");
+export function criarConta(email: string, senha: string): Promise<Sessao> {
+  return invoke<Sessao>("cloud_signup", { email, senha });
+}
+
+export function entrar(email: string, senha: string): Promise<Sessao> {
+  return invoke<Sessao>("cloud_login", { email, senha });
+}
+
+export function sair(): Promise<void> {
+  return invoke<void>("cloud_logout");
+}
+
+/**
+ * Sessao atual, sem rede. Hoje ela vive so na memoria do processo Rust, entao
+ * isto devolve `null` depois de reabrir o app -- ver a nota sobre secure
+ * storage em `cloud.rs`.
+ */
+export function sessaoAtual(): Promise<Sessao | null> {
+  return invoke<Sessao | null>("cloud_sessao");
+}
+
+/**
+ * Estado do pagamento. Tenta o servidor; sem rede, devolve o ultimo estado
+ * guardado -- que so vale enquanto a carencia permitir (ver `decideAccess`).
+ * Devolve `null` quando nunca houve entitlement neste aparelho.
+ */
+export function entitlementAtual(): Promise<Entitlement | null> {
+  return invoke<Entitlement | null>("cloud_entitlement");
 }

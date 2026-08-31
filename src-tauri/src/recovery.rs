@@ -67,6 +67,28 @@ fn checksums_esperados() -> Vec<(i64, Vec<u8>)> {
         .collect()
 }
 
+/// O efeito desta migracao ja esta no schema?
+///
+/// **Toda migracao nova precisa entrar aqui.** O padrao e `false`, e isso e
+/// deliberado: carimbar sem evidencia registraria como aplicada uma migracao
+/// que nunca rodou, e a tabela ou coluna dela nunca mais seria criada -- falha
+/// silenciosa, meses depois, sem nada no historico que explique.
+async fn efeito_presente(pool: &SqlitePool, versao: i64) -> Result<bool, sqlx::Error> {
+    Ok(match versao {
+        3 => {
+            tem_coluna(pool, "expenses", "nature").await?
+                && tem_coluna(pool, "expenses", "status").await?
+                && tem_coluna(pool, "categories", "nature").await?
+        }
+        4 => tem_coluna(pool, "expenses", "import_fingerprint").await?,
+        5 => {
+            tabela_existe(pool, "cloud_entitlement").await?
+                && tabela_existe(pool, "cloud_backup_state").await?
+        }
+        _ => false,
+    })
+}
+
 async fn tabela_existe(pool: &SqlitePool, nome: &str) -> Result<bool, sqlx::Error> {
     let row = sqlx::query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = $1")
         .bind(nome)
@@ -120,7 +142,12 @@ pub async fn diagnosticar(pool: &SqlitePool) -> Result<Diagnosis, sqlx::Error> {
         match aplicadas.iter().find(|(v, _)| *v == versao) {
             Some((_, registrado)) if *registrado != esperado => divergentes.push(versao),
             Some(_) => {}
-            None => ausentes.push(versao),
+            // Faltar no historico so e problema se o efeito JA estiver no banco
+            // -- ai o migrator tentaria aplicar de novo e falharia. Se o efeito
+            // nao esta la, isto e simplesmente uma migracao pendente, e o
+            // proprio sqlx aplica na proxima abertura. Nao e caso de reparo.
+            None if efeito_presente(pool, versao).await? => ausentes.push(versao),
+            None => {}
         }
     }
 
@@ -194,14 +221,17 @@ pub async fn reparar(pool: &SqlitePool, backup: String) -> Result<RepairOutcome,
     })
 }
 
-fn caminho_do_banco(app: &AppHandle) -> Result<PathBuf, String> {
+pub(crate) fn caminho_do_banco(app: &AppHandle) -> Result<PathBuf, String> {
     app.path()
         .app_config_dir()
         .map(|dir| dir.join("controle-de-gastos.db"))
         .map_err(|_| ERRO_GENERICO.to_string())
 }
 
-async fn abrir(app: &AppHandle) -> Result<SqlitePool, String> {
+/// Abre o mesmo banco que o plugin-sql usa. `pub(crate)` porque o cache de
+/// entitlement (cloud.rs) grava na tabela `cloud_entitlement` e nao pode abrir
+/// um segundo caminho para o arquivo.
+pub(crate) async fn abrir(app: &AppHandle) -> Result<SqlitePool, String> {
     let caminho = caminho_do_banco(app)?;
     let caminho = caminho.to_str().ok_or_else(|| ERRO_GENERICO.to_string())?;
     SqlitePool::connect(&format!("sqlite:{caminho}"))
@@ -367,11 +397,64 @@ mod tests {
     #[tokio::test]
     async fn checksum_esperado_acompanha_o_sql_da_migracao() {
         let esperados = checksums_esperados();
-        assert_eq!(esperados.len(), 4);
+        assert_eq!(esperados.len(), 5);
         // SHA-384 tem 48 bytes; se o sqlx trocar de algoritmo, isto quebra e
         // avisa antes de o reparo carimbar checksum errado.
         for (_, checksum) in &esperados {
             assert_eq!(checksum.len(), 48);
+        }
+    }
+
+    /// Regressao: o reparo carimbava TODA migracao ausente com base numa unica
+    /// evidencia (as colunas da v3). Bastou existir uma v5 para o cenario ficar
+    /// perigoso -- ela seria registrada como aplicada sem a tabela existir, e
+    /// `cloud_entitlement` nunca mais seria criada neste aparelho.
+    #[tokio::test]
+    async fn reparo_nao_carimba_migracao_cujo_efeito_nao_esta_no_banco() {
+        let pool = pool_vazio().await;
+        pool.execute(SCHEMA_COM_COLUNAS).await.expect("schema");
+
+        let esperados = checksums_esperados();
+        registrar(&pool, 1, vec![0xAA; 48]).await;
+        for (versao, checksum) in esperados.iter().filter(|(v, _)| *v == 2 || *v == 4) {
+            registrar(&pool, *versao, checksum.clone()).await;
+        }
+
+        let d = diagnosticar(&pool).await.expect("diagnostico");
+        // A v3 entra porque as colunas provam que ela rodou; a v5 nao, porque a
+        // tabela dela nao existe -- e ela e apenas pendente, nao quebrada.
+        assert_eq!(d.ausentes, vec![3]);
+
+        let r = reparar(&pool, "backup.db".to_string()).await.expect("reparo");
+        assert_eq!(r.carimbadas, vec![3]);
+
+        let v5: Option<(i64,)> =
+            sqlx::query_as("SELECT version FROM _sqlx_migrations WHERE version = 5")
+                .fetch_optional(&pool)
+                .await
+                .expect("consulta");
+        assert!(v5.is_none(), "a v5 nao pode ser carimbada sem a tabela existir");
+    }
+
+    #[tokio::test]
+    async fn toda_migracao_do_codigo_tem_evidencia_declarada() {
+        // Aplica o SQL real de todas as migracoes e cobra que cada uma saiba se
+        // reconhecer no schema. Se alguem adicionar a v6 e esquecer o
+        // `efeito_presente`, este teste falha -- e o esquecimento viraria, em
+        // campo, uma migracao carimbada sem nunca ter rodado.
+        let pool = pool_vazio().await;
+        for m in migrations() {
+            pool.execute(m.sql).await.expect("aplicar migracao");
+        }
+
+        for (versao, _) in checksums_esperados() {
+            if versao <= 2 {
+                continue; // v1 e v2 criam o schema base; nao ha o que carimbar
+            }
+            assert!(
+                super::efeito_presente(&pool, versao).await.expect("evidencia"),
+                "migracao v{versao} sem evidencia declarada em efeito_presente"
+            );
         }
     }
 }

@@ -1,13 +1,17 @@
 import { motion } from "motion/react";
+import { UserRound } from "lucide-react";
 import { AppearanceSelector } from "../../features/theme/AppearanceSelector";
 import { TAB_DEFS, type TabDef, type TabId } from "./tabs";
 
 interface SidebarProps {
   active: TabId;
   onSelect: (id: TabId) => void;
+  /** Rotulo do botao de conta: e-mail quando conectado, "Conta" quando nao. */
+  conta: string;
+  onConta: () => void;
 }
 
-export default function Sidebar({ active, onSelect }: SidebarProps) {
+export default function Sidebar({ active, onSelect, conta, onConta }: SidebarProps) {
   return (
     <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-surface">
       <div className="flex h-16 items-center px-6">
@@ -23,7 +27,17 @@ export default function Sidebar({ active, onSelect }: SidebarProps) {
           />
         ))}
       </nav>
-      <div className="border-t border-border p-3">
+      <div className="flex flex-col gap-2 border-t border-border p-3">
+        {/* Conta e um botao no rodape, nao uma aba: o app abre e funciona sem
+            ela, e quem nunca cadastrar nunca precisa ver isto. */}
+        <button
+          type="button"
+          onClick={onConta}
+          className="flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <UserRound className="size-5 shrink-0" aria-hidden />
+          <span className="truncate">{conta}</span>
+        </button>
         <AppearanceSelector />
       </div>
     </aside>
