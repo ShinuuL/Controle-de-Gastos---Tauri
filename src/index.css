@@ -121,30 +121,24 @@
     letter-spacing: .02em;
   }
 
+  /* Estampa em vetor, ladrilhada. Um unico caminho para celular e desktop:
+     antes eram dois bitmaps, e o do desktop (740x493, esticado com "cover")
+     aparecia pixelado em qualquer janela grande. Vetor nao tem resolucao, entao
+     a mesma regra serve para o celular e para um monitor 4K.
+
+     O `background-size` fixo em 224px e o tamanho do proprio ladrilho: a
+     estampa mantem a escala medida na arte original em vez de crescer com a
+     janela, que e o que faz um padrao continuar parecendo padrao. */
   :root[data-theme="strawberry"] .theme-shell::before {
-    background-image: url("./assets/moranguinho/strawberry-background.avif");
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
+    background-image: url("./assets/moranguinho/fundo-morangos.svg");
+    background-position: top center;
+    background-repeat: repeat;
+    background-size: 224px 224px;
     content: "";
     inset: 0;
     pointer-events: none;
     position: absolute;
     z-index: 0;
-  }
-
-  /* Mobile (Android): arte retrato 675x1200, largura 100% com altura "auto",
-     entao a proporcao e preservada e nao ha stretch/crop como no "cover".
-     675px e maior que a largura CSS de qualquer celular, logo a imagem so
-     e reduzida, nunca ampliada -- e o que evita a quebra de resolucao.
-     O repeat-y faz cada tela de rolagem exibir um fundo identico. */
-  @media (max-width: 767px) {
-    :root[data-theme="strawberry"] .theme-shell::before {
-      background-image: url("./assets/moranguinho/Fundo-Mobile.jpeg");
-      background-position: top center;
-      background-repeat: repeat-y;
-      background-size: 100% auto;
-    }
   }
 
   .theme-shell > * {

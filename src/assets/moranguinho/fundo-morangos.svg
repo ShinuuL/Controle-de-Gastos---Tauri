@@ -1,0 +1,93 @@
+<!--
+  Fundo do tema moranguinho, em vetor.
+
+  Substitui os dois bitmaps que existiam antes (`strawberry-background.avif`,
+  740x493, e `Fundo-Mobile.jpeg`, 675x1200). A arte original ja era um padrao
+  que se repete: morangos e bolinhas sobre rosa. Padrao nao precisa de bitmap,
+  precisa de um ladrilho — e em vetor ele fica nitido em qualquer tamanho de
+  janela e em qualquer densidade de tela. Era isso que faltava no desktop, onde
+  o AVIF de 740px era ampliado cerca de 2,6x para preencher a tela.
+
+  Paleta e escala MEDIDAS no JPEG original, para o tema nao mudar de cara:
+    fundo #ffd9e8 · morango #f78ba6 · folha #a0d28c · bolinha #ffffff
+    morango de 31x34, um a cada ~6.400 px2 de fundo
+
+  O CSS aplica com `background-size: 224px`, o tamanho do proprio ladrilho: a
+  estampa mantem a escala medida na arte original em vez de crescer com a
+  janela. O morango e mais alto que largo (34 contra 31) — errar isso o deixa
+  com cara de tomate.
+
+  ARQUIVO GERADO por `scripts/gerar-fundo-morangos.py`. Nao edite aqui: rode o
+  script. Ele explica por que as posicoes sao sorteadas em vez de fixas.
+
+  Cuidado: comentario XML nao aceita dois hifens seguidos, e o SVG deixa de
+  carregar inteiro se isso escapar.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="224" height="224" viewBox="0 0 224 224">
+  <defs>
+    <!-- Um morango so, reaproveitado com rotacoes e posicoes diferentes.
+         Desenhado em torno da origem, com 31 de largura por 34 de altura. -->
+    <g id="m">
+      <!-- Ombros largos perto do topo, afinando ate a ponta arredondada. -->
+      <path d="M0 19c-5.4-3-13.4-11.4-15.4-22.6C-17.6-9.8-12-15.4 0-15.4s17.6 5.6 15.4 11.8C13.4 7.6 5.4 16 0 19Z" fill="#f78ba6"/>
+      <!-- Coroa centrada no eixo da fruta. -->
+      <g transform="translate(4.6 .6) scale(.82)">
+        <path d="M0-17.4c-5.6-7.4-12.4-6.8-15.4-5.2 3.7 1.4 6.6 4.4 8 8.2-4.3-2.2-8.8-1.4-11.7.8 5.1.8 9.6 3.8 12.5 7.4C-4.5-9.8-.2-12.8 4.9-13.6 2-15.8-2.5-16.6-6.8-14.4c1.4-3.8 4.3-6.8 8-8.2C-1.8-24.2-8.6-24.8-14.2-17.4Z" fill="#a0d28c"/>
+      </g>
+      <g fill="#fff" opacity=".8">
+        <ellipse cx="-5.4" cy="-3.4" rx="1.2" ry="1.9" transform="rotate(-26 -5.4 -3.4)"/>
+        <ellipse cx="2.6" cy="-5.6" rx="1.2" ry="1.9" transform="rotate(8 2.6 -5.6)"/>
+        <ellipse cx="6.2" cy="2.2" rx="1.2" ry="1.9" transform="rotate(30 6.2 2.2)"/>
+        <ellipse cx="-2.8" cy="6.8" rx="1.2" ry="1.9" transform="rotate(-15 -2.8 6.8)"/>
+        <ellipse cx="4" cy="11" rx="1.2" ry="1.9" transform="rotate(20 4 11)"/>
+      </g>
+    </g>
+  </defs>
+
+  <rect width="224" height="224" fill="#ffd9e8"/>
+
+  <use href="#m" transform="translate(12.4 50.9) rotate(4.3)"/>
+  <use href="#m" transform="translate(236.4 50.9) rotate(4.3)"/>
+  <use href="#m" transform="translate(23.4 152.8) rotate(15.0)"/>
+  <use href="#m" transform="translate(247.4 152.8) rotate(15.0)"/>
+  <use href="#m" transform="translate(132.5 175.6) rotate(15.1)"/>
+  <use href="#m" transform="translate(46.6 -11.5) rotate(6.0)"/>
+  <use href="#m" transform="translate(46.6 212.5) rotate(6.0)"/>
+  <use href="#m" transform="translate(175.3 116.3) rotate(0.6)"/>
+  <use href="#m" transform="translate(149.7 36.9) rotate(-7.3)"/>
+  <use href="#m" transform="translate(89.7 129.3) rotate(10.7)"/>
+  <use href="#m" transform="translate(87.1 45.5) rotate(12.8)"/>
+
+  <!-- Bolinhas nos vaos. Depois dos morangos para nunca sumirem sob eles. -->
+  <g fill="#ffffff">
+    <circle cx="195.7" cy="177.1" r="4"/>
+    <circle cx="138.0" cy="210.0" r="4"/>
+    <circle cx="18.0" cy="3.6" r="4"/>
+    <circle cx="18.0" cy="227.6" r="4"/>
+    <circle cx="100.8" cy="94.0" r="4"/>
+    <circle cx="75.0" cy="164.9" r="4"/>
+    <circle cx="114.6" cy="38.9" r="4"/>
+    <circle cx="104.0" cy="208.2" r="4"/>
+    <circle cx="68.4" cy="68.9" r="4"/>
+    <circle cx="114.7" cy="117.4" r="4"/>
+    <circle cx="159.7" cy="94.0" r="4"/>
+    <circle cx="133.0" cy="66.9" r="4"/>
+    <circle cx="74.4" cy="201.0" r="4"/>
+    <circle cx="73.3" cy="12.9" r="4"/>
+    <circle cx="44.2" cy="82.4" r="4"/>
+    <circle cx="-4.4" cy="198.5" r="4"/>
+    <circle cx="219.6" cy="198.5" r="4"/>
+    <circle cx="198.9" cy="149.9" r="4"/>
+    <circle cx="216.5" cy="81.1" r="4"/>
+    <circle cx="176.9" cy="73.6" r="4"/>
+    <circle cx="159.1" cy="4.2" r="4"/>
+    <circle cx="159.1" cy="228.2" r="4"/>
+    <circle cx="200.8" cy="57.7" r="4"/>
+    <circle cx="167.1" cy="163.7" r="4"/>
+    <circle cx="187.6" cy="216.7" r="4"/>
+    <circle cx="44.6" cy="49.9" r="4"/>
+    <circle cx="57.9" cy="109.1" r="4"/>
+    <circle cx="139.1" cy="139.4" r="4"/>
+    <circle cx="193.4" cy="25.7" r="4"/>
+  </g>
+</svg>
