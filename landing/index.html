@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Contr0l — controle de gastos que fica no seu aparelho</title>
-<meta name="description" content="App de controle de gastos para Android que funciona offline. Os lançamentos ficam gravados no celular e ninguém tem acesso a eles — nem o desenvolvedor.">
+<meta name="description" content="App de controle de gastos que funciona offline, sem conta. Os lançamentos ficam no aparelho e ninguém tem acesso a eles — nem o desenvolvedor. Backup na nuvem é opcional e sobe cifrado.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
@@ -110,6 +110,16 @@ a{color:inherit}
 .baixar:hover{background:var(--marca)}
 .baixar:active{transform:translateY(1px)}
 .baixar:focus-visible{outline:3px solid var(--marca);outline-offset:3px}
+/* Segunda opcao de download: mesmo peso visual de um link, nao de um botao.
+   Duas chamadas identicas fariam o visitante escolher no escuro. */
+.baixar--alt{
+  margin-top:.6rem;background:transparent;color:var(--tinta-2);
+  border:1px solid var(--linha);font-weight:500
+}
+.baixar--alt:hover{background:transparent;border-color:var(--marca);color:var(--marca)}
+.recibo__nota{
+  margin:.7rem 0 0;font-size:.85rem;line-height:1.5;color:var(--tinta-2)
+}
 
 .recibo__linhas{margin-top:1rem;border-top:1px dashed var(--linha);padding-top:.85rem}
 .chave{margin-top:.9rem;border-top:1px dashed var(--linha);padding-top:.85rem}
@@ -312,24 +322,32 @@ a{color:inherit}
   <div class="env hero">
     <div>
       <div class="sobe">
-        <p class="rotulo">Android · seus lançamentos, só seus</p>
+        <p class="rotulo" id="rotulo-plataformas">Android · seus lançamentos, só seus</p>
         <h1>Suas finanças ficam <em>no seu aparelho</em>.</h1>
         <p class="hero__sub">
-          Contr0l é um app de controle de gastos que funciona offline. Os
-          lançamentos ficam gravados no celular e <strong>ninguém tem acesso a
-          eles — nem eu</strong>. É a única promessa que faço, e ela não muda.
+          Contr0l é um app de controle de gastos que funciona offline e sem
+          conta. Os lançamentos ficam gravados no aparelho e <strong>ninguém tem
+          acesso a eles — nem eu</strong>. É a única promessa que faço, e ela não
+          muda: se você ligar o backup, o que sobe é um arquivo cifrado que nem
+          eu consigo abrir.
         </p>
       </div>
 
       <div class="recibo sobe" id="baixar">
         <a class="baixar" id="lnk" href="https://updates-gateway.sofaltaumaletr.workers.dev/v1/apps/contr0l/download/0.4.1/contr0l-0.4.1.apk">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 12 5 5 5-5"/><path d="M5 21h14"/></svg>
-          Baixar para Android
+          <span id="lnk-txt">Baixar para Android</span>
         </a>
+        <!-- A segunda opcao so aparece quando ela existe de verdade no
+             manifesto: um botao que nao baixa nada e pior que botao nenhum. -->
+        <a class="baixar baixar--alt" id="lnk2" hidden>
+          <span id="lnk2-txt"></span>
+        </a>
+        <p class="recibo__nota" id="nota" hidden></p>
         <dl class="recibo__linhas">
           <div class="rec"><dt>versão</dt><dd id="v">0.4.1</dd></div>
           <div class="rec"><dt>tamanho</dt><dd id="t">69,4 MB</dd></div>
-          <div class="rec"><dt>requer</dt><dd>Android 7.0 ou superior</dd></div>
+          <div class="rec"><dt>requer</dt><dd id="req">Android 7.0 ou superior</dd></div>
         </dl>
         <div class="chave">
           <label for="lic">Chave de licença</label>
@@ -518,26 +536,34 @@ a{color:inherit}
       <p>
         O Contr0l guarda tudo num banco SQLite dentro do próprio aparelho. Você
         lança, consulta e fecha o mês sem internet, porque a leitura e a escrita
-        acontecem no celular — não em um servidor meu.
+        acontecem ali — não em um servidor meu.
       </p>
       <p>
         <strong>O que eu prometo é uma coisa só, e para sempre: eu não tenho, e
-        não vou ter, acesso aos seus lançamentos.</strong> Se um dia o app
-        verificar atualização ou você ligar o backup na nuvem, isso continua
-        valendo — o que sobe é um arquivo cifrado no seu aparelho, que o servidor
-        não consegue abrir. Prefiro prometer pouco e cumprir do que prometer
-        "zero internet" e ter que voltar atrás depois.
+        não vou ter, acesso aos seus lançamentos.</strong> Isso vale quando o app
+        verifica atualização e vale quando você liga o backup — o que sobe é um
+        arquivo cifrado dentro do seu aparelho, que o servidor recebe fechado e
+        guarda fechado. Prefiro prometer pouco e cumprir do que prometer "zero
+        internet" e ter que voltar atrás depois.
       </p>
       <p>
-        Isso tem uma consequência que prefiro dizer na frente: <strong>hoje, se
-        você desinstalar o app ou perder o celular, os lançamentos vão
-        junto</strong>. Não tenho como recuperar — eu não tenho cópia.
+        <strong>A conta é opcional e não vem ligada.</strong> Sem ela o app é o
+        que sempre foi: abre, lança e fecha o mês sem internet e sem cadastro. A
+        contrapartida é que, se você desinstalar o app ou perder o aparelho, os
+        lançamentos vão junto — eu não tenho cópia para devolver.
       </p>
       <p>
-        Sincronização em nuvem está no plano, opcional e com criptografia feita no
-        aparelho: o servidor guardaria um arquivo que ele mesmo não consegue ler.
-        É o que permite recuperar os lançamentos depois de trocar de celular, sem
-        que eu passe a ter cópia deles.
+        Com uma conta, o app manda uma cópia cifrada do banco para a nuvem, e ela
+        volta quando você reinstalar ou trocar de aparelho. A chave que abre esse
+        arquivo <strong>é derivada da sua senha e nunca sai do aparelho</strong>:
+        o servidor guarda os bytes e não tem como lê-los.
+      </p>
+      <p>
+        O preço disso precisa estar na frente, e não escondido nos termos:
+        <strong>se você esquecer a senha, o backup não pode ser recuperado — nem
+        por mim</strong>. Não existe "recuperar conta" que devolva os dados,
+        porque a chave é sua. É o mesmo motivo pelo qual eu não consigo ler
+        nada.
       </p>
 
       <ul class="itens" style="margin-top:2rem">
@@ -570,16 +596,22 @@ a{color:inherit}
       <h2>Quatro passos, uma vez só.</h2>
     </div>
     <div class="corpo">
-      <p>
+      <p id="instalar-intro">
         O app é distribuído fora da Play Store, então o Android vai pedir uma
         confirmação na primeira instalação. É o comportamento normal para qualquer
         APK, e vale conferir o que você está instalando.
       </p>
-      <ol class="passos">
+      <ol class="passos" id="passos-android">
         <li><span>Baixe o APK pelo botão acima.</span></li>
         <li><span>Abra o arquivo. O Android vai avisar que a origem é desconhecida.</span></li>
         <li><span>Toque em <strong>Configurações</strong> e permita instalar deste app — normalmente o navegador ou o gerenciador de arquivos.</span></li>
         <li><span>Volte e confirme a instalação.</span></li>
+      </ol>
+      <ol class="passos" id="passos-windows" hidden>
+        <li><span>Baixe o instalador pelo botão acima.</span></li>
+        <li><span>Abra o arquivo. O Windows pode mostrar a tela azul do SmartScreen, porque o instalador não tem certificado de editor.</span></li>
+        <li><span>Clique em <strong>Mais informações</strong> e depois em <strong>Executar assim mesmo</strong>.</span></li>
+        <li><span>Siga o instalador até o fim.</span></li>
       </ol>
       <p style="margin-top:1.5rem">
         Quer conferir o arquivo antes de instalar? As
@@ -609,19 +641,19 @@ a{color:inherit}
         <div class="spec"><dt>Versão</dt><dd id="v2">0.4.1</dd></div>
         <div class="spec"><dt>Código da versão</dt><dd>4001</dd></div>
         <div class="spec"><dt>Tamanho</dt><dd id="t2">69,4 MB</dd></div>
-        <div class="spec"><dt>Requer</dt><dd>Android 7.0 (API 24) ou superior</dd></div>
+        <div class="spec"><dt>Requer</dt><dd id="req2">Android 7.0 (API 24) ou superior</dd></div>
         <div class="spec"><dt>Compilado para</dt><dd>API 36</dd></div>
         <div class="spec"><dt>Arquiteturas</dt><dd>arm64-v8a, armeabi-v7a, x86, x86_64</dd></div>
-        <div class="spec"><dt>Pacote</dt><dd>com.controle_gastos.app</dd></div>
+        <div class="spec" id="spec-pacote"><dt>Pacote</dt><dd>com.controle_gastos.app</dd></div>
         <div class="spec"><dt>Dados</dt><dd>SQLite no aparelho</dd></div>
         <div class="spec">
           <dt>Permissões</dt>
           <dd>
             <code>INTERNET</code>
-            <span class="spec__n">Declarada pelo componente de webview do Android. Nenhum lançamento é enviado por ela: os dados financeiros ficam no aparelho.</span>
+            <span class="spec__n">Usada para verificar atualização e, se você criar uma conta, para enviar o backup — que sai do aparelho já cifrado. Nenhum lançamento é enviado em claro, e sem conta o app não faz requisição de dados.</span>
           </dd>
         </div>
-        <div class="spec"><dt>sha256 do APK</dt><dd class="quebra" id="h2">6cf9ddfc219cd29e4cc49d8933657425d1553b0dfa81a2202703800dff71670d</dd></div>
+        <div class="spec"><dt><span id="rot-sha">sha256 do APK</span></dt><dd class="quebra" id="h2">6cf9ddfc219cd29e4cc49d8933657425d1553b0dfa81a2202703800dff71670d</dd></div>
         <div class="spec"><dt>Assinatura do manifesto</dt><dd class="quebra"><span class="ok" id="s2">ed25519 · dcbd34553e007416</span></dd></div>
         <div class="spec"><dt>Certificado do pacote</dt><dd class="quebra">SHA-256 4937b4f476fae8c8b3bdecc6c84af44706121222769ffb136a165630b64146d9</dd></div>
       </dl>
@@ -640,7 +672,7 @@ a{color:inherit}
 <footer class="rodape">
   <div class="env rodape__int">
     <span><span class="mm">Contr0l</span> · feito por Gabriel Garcia</span>
-    <span><a href="#baixar">Baixar para Android</a></span>
+    <span><a href="#baixar">Baixar o app</a></span>
   </div>
 </footer>
 
@@ -684,19 +716,124 @@ async function carregar(chave) {
   if (!r.ok) return { estado: "indisponivel" };
 
   const { manifest, signature } = await r.json();
-  const a = manifest.artifacts.find((x) => x.kind === "apk");
-  if (!a) return { estado: "indisponivel" };
+  const arts = manifest.artifacts || [];
+  const android = arts.find((x) => x.platform === "android");
+  const windows = arts.find((x) => x.platform === "windows");
+
+  // O principal e o que serve para quem esta lendo agora; o alternativo e a
+  // outra plataforma, quando ela existe. Se nada servir, nao ha o que oferecer.
+  const { principal, alternativo, nota } = escolher({ android, windows });
+  if (!principal) return { estado: "indisponivel" };
 
   const poe = (id, txt) => { const el = $(id); if (el) el.textContent = txt; };
+  const comChave = (url) => (chave ? `${url}?license=${encodeURIComponent(chave)}` : url);
+
   poe("v", manifest.version);
   poe("v2", manifest.version);
-  poe("t", mb(a.size));
-  poe("t2", mb(a.size));
-  poe("h2", a.sha256);
+  poe("t", mb(principal.art.size));
+  poe("t2", mb(principal.art.size));
+  poe("h2", principal.art.sha256);
   poe("s2", `${signature.alg} · ${signature.key_id}`);
-  document.querySelectorAll("[data-arquivo]").forEach((el) => { el.textContent = a.filename; });
-  $("lnk").href = chave ? `${a.url}?license=${encodeURIComponent(chave)}` : a.url;
+  poe("req", principal.requer);
+  poe("req2", principal.requer);
+  poe("rot-sha", `sha256 do ${principal.arquivoRotulo}`);
+  poe("lnk-txt", principal.rotulo);
+  $("lnk").href = comChave(principal.art.url);
+
+  const alt = $("lnk2");
+  if (alternativo) {
+    poe("lnk2-txt", alternativo.rotulo);
+    alt.href = comChave(alternativo.art.url);
+    alt.hidden = false;
+  } else {
+    alt.hidden = true;
+  }
+
+  const elNota = $("nota");
+  elNota.textContent = nota || "";
+  elNota.hidden = !nota;
+
+  poe(
+    "rotulo-plataformas",
+    windows ? "Android e Windows · seus lançamentos, só seus" : "Android · seus lançamentos, só seus"
+  );
+
+  // Os passos de instalacao acompanham o botao principal: quem esta no Windows
+  // nao precisa ler sobre "origem desconhecida" do Android.
+  const ehWindows = principal.plataforma === "windows";
+  // Identificador de pacote e permissao sao conceitos do Android; no Windows
+  // seriam linhas que nao querem dizer nada para quem esta lendo.
+  const pacote = $("spec-pacote");
+  if (pacote) pacote.hidden = ehWindows;
+  $("passos-android").hidden = ehWindows;
+  $("passos-windows").hidden = !ehWindows;
+  poe(
+    "instalar-intro",
+    ehWindows
+      ? "O instalador não é assinado com certificado de editor, então o Windows vai pedir uma confirmação na primeira execução. É o comportamento normal para qualquer programa distribuído fora da Microsoft Store."
+      : "O app é distribuído fora da Play Store, então o Android vai pedir uma confirmação na primeira instalação. É o comportamento normal para qualquer APK, e vale conferir o que você está instalando."
+  );
+
+  document.querySelectorAll("[data-arquivo]").forEach((el) => {
+    el.textContent = principal.art.filename;
+  });
   return { estado: "liberado" };
+}
+
+/** Plataforma de quem esta lendo a pagina. */
+function plataformaDoNavegador() {
+  const ua = navigator.userAgent || "";
+  // Android antes de Windows: o UA do Android tambem contem "Linux", e alguns
+  // navegadores em tablet mentem sobre o resto.
+  if (/Android/i.test(ua)) return "android";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
+  if (/Windows/i.test(ua)) return "windows";
+  return "outra";
+}
+
+const ROTULOS = {
+  android: { rotulo: "Baixar para Android", requer: "Android 7.0 ou superior", arquivoRotulo: "APK" },
+  windows: { rotulo: "Baixar para Windows", requer: "Windows 10 ou superior", arquivoRotulo: "instalador" },
+};
+
+const opcao = (plataforma, art) => art && { plataforma, art, ...ROTULOS[plataforma] };
+
+/**
+ * Decide qual download vira botao principal.
+ *
+ * A regra e simples: oferecer primeiro o que roda no aparelho de quem esta
+ * lendo, e nunca esconder a outra plataforma -- quem le no computador pode
+ * querer mandar o APK para o proprio celular.
+ */
+function escolher({ android, windows }) {
+  const noAndroid = opcao("android", android);
+  const noWindows = opcao("windows", windows);
+
+  switch (plataformaDoNavegador()) {
+    case "android":
+      return { principal: noAndroid, alternativo: noWindows };
+
+    case "windows":
+      // Enquanto o .exe nao sair, quem esta no Windows precisa saber disso em
+      // vez de encarar um botao de APK sem explicacao.
+      return noWindows
+        ? { principal: noWindows, alternativo: noAndroid }
+        : {
+            principal: noAndroid,
+            alternativo: null,
+            nota: "Ainda não há versão para Windows. O arquivo acima é o APK, para instalar no celular.",
+          };
+
+    case "ios":
+      return {
+        principal: noWindows || noAndroid,
+        alternativo: noWindows ? noAndroid : null,
+        nota: "Não há versão para iPhone — o app usa recursos que a App Store não permite distribuir fora dela.",
+      };
+
+    default:
+      return { principal: noAndroid, alternativo: noWindows };
+  }
 }
 
 const MOTIVOS = {
