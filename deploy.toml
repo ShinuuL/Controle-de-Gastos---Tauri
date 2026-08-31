@@ -15,3 +15,16 @@ path     = "dist-android/contr0l.apk"
 platform = "android"
 arch     = "universal"
 kind     = "apk"
+
+# Instalador do Windows. Gere com `npm run windows:release`, que compila e copia
+# para dist-windows/ com o nome do produto -- o publish versiona a partir do
+# nome do arquivo, produzindo contr0l-0.5.0.exe.
+#
+# Enquanto o arquivo nao existir, o `publish` recusa com "artefato nao
+# encontrado" e nao sobe release nenhuma. E de proposito: uma publicacao que
+# esqueca o Windows deixaria a landing page oferecendo um botao que nao baixa.
+[[artifact]]
+path     = "dist-windows/contr0l.exe"
+platform = "windows"
+arch     = "x64"
+kind     = "exe"
