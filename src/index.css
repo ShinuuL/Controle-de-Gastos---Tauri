@@ -121,10 +121,9 @@
     letter-spacing: .02em;
   }
 
-  /* Estampa em vetor, ladrilhada. Um unico caminho para celular e desktop:
-     antes eram dois bitmaps, e o do desktop (740x493, esticado com "cover")
-     aparecia pixelado em qualquer janela grande. Vetor nao tem resolucao, entao
-     a mesma regra serve para o celular e para um monitor 4K.
+  /* Estampa em vetor, ladrilhada. Serve telas medias e grandes, onde o bitmap
+     antigo (740x493, esticado com "cover") aparecia pixelado. Vetor nao tem
+     resolucao, entao a mesma regra vale de um notebook a um monitor 4K.
 
      O `background-size` fixo em 224px e o tamanho do proprio ladrilho: a
      estampa mantem a escala medida na arte original em vez de crescer com a
@@ -139,6 +138,22 @@
     pointer-events: none;
     position: absolute;
     z-index: 0;
+  }
+
+  /* Celular (Android): a arte original em bitmap, 675x1200 em retrato. No
+     vetor a estampa fica com a escala do ladrilho, e numa tela estreita isso
+     muda o desenho que o app tinha; aqui a arte volta como era. Largura 100%
+     com altura "auto" preserva a proporcao (sem stretch nem crop do "cover"),
+     e como 675px e mais largo que a largura CSS de qualquer celular a imagem
+     so e reduzida, nunca ampliada. O repeat-y repete o mesmo fundo a cada
+     tela de rolagem. */
+  @media (max-width: 767px) {
+    :root[data-theme="strawberry"] .theme-shell::before {
+      background-image: url("./assets/moranguinho/Fundo-Mobile.jpeg");
+      background-position: top center;
+      background-repeat: repeat-y;
+      background-size: 100% auto;
+    }
   }
 
   .theme-shell > * {
