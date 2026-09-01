@@ -1,6 +1,47 @@
 # Roadmap — Controle de Gastos
 
-**Status geral:** Fase 19 concluída (2026-08-29). Em andamento: fase 11/17 (nuvem) — cripto, contas, entitlement assinado e backup cifrado entregues (2026-08-29/30, passos 1–5 da spec). O backup usa **KV** em vez de R2, porque o R2 exige cartão. Sessão persistida e push automático entregues em 2026-08-30. Falta aplicar a migração 002 e o deploy do gateway, validar em aparelho e reescrever as promessas da landing page. A venda está sequenciada depois da nuvem — ver "Sequenciamento decidido em 2026-08-29".
+**Status geral:** Fase 11/17 (nuvem) com os 6 passos da spec entregues no lado do app e a infraestrutura no ar (conferida em 2026-09-01; ver [`docs/deploy-do-gateway.md`](docs/deploy-do-gateway.md)). **Fase 21 (atualização pelo app) com o código entregue em 2026-09-01** — manifesto assinado verificado no aparelho, sha256 conferido antes de instalar e entrega ao instalador do sistema. O que separa as duas de "concluídas" é a mesma coisa: **validação em aparelho real**. A venda vem depois: **17 (nuvem) → 21 (atualização) → 14 (Stripe) → 20 (trial e premium)**.
+
+---
+
+## Pendências abertas em 2026-09-01
+
+Uma lista só, para não caçar pendência espalhada por dez seções. Ordem de quem
+bloqueia mais.
+
+**No aparelho (bloqueia fechar a fase 11/17 e a 22):**
+
+1. **Ponta a ponta da nuvem:** cadastrar, lançar, enviar backup, desinstalar,
+   reinstalar, entrar, restaurar e conferir que os lançamentos batem. Depois:
+   modo avião com conta cadastrada, e apagar uma conta de teste conferindo o
+   `conta_apagada` na trilha de auditoria do D1.
+2. **Importar o CSV do Nubank que falhou**, agora com a consulta única. Se ainda
+   falhar, a tela mostra a causa — anotar a frase inteira.
+3. **Fundo do tema no celular** e o color picker e o botão voltar da fase 19,
+   que nunca foram confirmados em aparelho real.
+4. **Um PDF de extrato do Nubank** para conferir o parser genérico com arquivo
+   de verdade (fase 19).
+5. **Atualização pelo app (fase 21):** publicar uma versão maior que a instalada
+   e conferir no aparelho a faixa, a tela de permissão do Android e o instalador
+   abrindo. Só existe teste real com release publicada.
+
+**Fora do código:**
+
+5. **E-mail de contato do titular** nas páginas legais (art. 41). Hoje elas
+   remetem ao canal de entrega, porque o domínio próprio não existe.
+6. **Domínio próprio** (fase 14): destrava e-mail transacional, webhooks do
+   Stripe e o endereço das páginas legais.
+7. **Compra única vs. assinatura**, decidido **antes** de criar o produto no
+   Stripe: trocar depois obriga a migrar quem já comprou.
+8. **Revisão por advogado** antes de cobrar do primeiro cliente (fase 15b).
+9. **`ADMIN_TOKEN` guardado fora de pasta temporária** — quem tem esse token
+   emite acesso pago de graça.
+
+**Decididas e não iniciadas:** fase 14 (Stripe), fase 20 (trial e premium),
+fase 21 (atualização automática no aparelho).
+
+**Não são pendência, e sim decisão:** `PAID_APPS` vazio (fase 13) e iOS fora de
+escopo (fase 18).
 
 ---
 
@@ -17,7 +58,14 @@
 | 7 | Android | ✅ Concluída | Projeto Tauri Android + preparação de assinatura de release | — |
 | 8 | Transactions | ✅ Concluída | Modelo de transações: contratos de domínio, cálculo de resultado mensal (realizado/projeção), repositório CRUD completo (list com JOIN, create, update, delete, traceOperation), tela de Movimentações + 4ª aba | 69 testes TS + 1 Rust, critic APPROVED, vision PASS |
 | 9 | Migração do legado | ✅ Concluída | Migração de Dashboard e CategoriesScreen do repositório expenses legado para modelo de transações | 60 testes TS + 1 Rust, lint/typecheck limpos, vision pendente |
+| 12 | Reparo de migração quebrada | ✅ Concluída | Diagnóstico e reparo por *stamping* + tela de reparo no boot | 7 testes Rust + 5 TS, validado em aparelho real (2026-08-27) |
+| 13 | Chave de licença no download | ✅ Concluída | KV de licenças, rotas de administração e campo de chave na página | Verificado de ponta a ponta; `PAID_APPS` desligado de propósito |
 | 19 | Importação, navegação e cor | ✅ Concluída | Desbloqueio da importação Nubank, PDF de qualquer banco, duplicatas contra lançamento manual, botão voltar do Android, color picker de categoria | 214 testes TS, lint/typecheck/build limpos, validação em aparelho pendente |
+| 11/17 | Nuvem: conta, backup cifrado e entitlement | 🟡 App pronto | Cripto, contas, entitlement assinado, backup cifrado, sessão persistida, push automático e exclusão de conta | 63 testes Rust + 50 no gateway; Worker no ar; **validação em aparelho pendente** |
+| 15b | LGPD | 🟡 Parcial | Exclusão de conta pelo app, política de privacidade e termos de uso | 6 testes em `landing/legal.test.js`; falta e-mail de contato e revisão jurídica |
+| 21b | Fundo do tema em vetor | ✅ Concluída | Ladrilho SVG no desktop; bitmap original de volta no celular (2026-09-01) | Contagem de frutas conferida contra a arte original |
+| 22 | Importação no aparelho e fundo do celular | ✅ Concluída | Conciliação em uma consulta só e causa do erro visível na tela | 267 testes TS + 63 Rust, lint/typecheck/build limpos |
+| 21 | Atualização automática no aparelho | 🟡 Código pronto | Manifesto assinado verificado no app, download com sha256 conferido e entrega ao instalador do sistema | 11 testes Rust + 11 TS; compila para `aarch64-linux-android` e o Kotlin compila; **falta rodar em aparelho** |
 
 > **Nota sobre numeração:** As fases 1–7 seguem a ordem cronológica dos commits (2026-08-15). "Transactions" foi internamente chamada de "Fase 5" durante o desenvolvimento, mas corresponde à 8ª entrega cronológica.
 
@@ -146,7 +194,11 @@ paralelo, já que não dependem de código do app. As pendências
 abaixo continuam válidas, mas os itens 3 e 4 (religar o bloqueio de download)
 esperam essa decisão.
 
-### Pendências imediatas (para retomar em nova sessão)
+### Pendências imediatas (histórico da sessão de 2026-08-29)
+
+> Mantido como registro. **A lista viva é "Pendências abertas" no topo deste**
+> **arquivo** — o item 5 já estava feito, e os itens 3 e 4 continuam esperando a
+> decisão de sequenciamento (venda depois da nuvem).
 
 Ordem sugerida. Os dois primeiros itens já foram entregues; o que resta é a venda.
 
@@ -251,6 +303,10 @@ placeholders de autenticação continuam válidos, mas passam a pertencer à fas
 
 ### Fase 15b — LGPD (bloqueia a cobrança do primeiro cliente)
 
+> **Parcialmente entregue em 2026-09-01** — política, termos e exclusão de
+> conta estão em "Fase 15b/11", mais abaixo. O que resta desta lista é a rota
+> no Worker, o e-mail de contato e a revisão jurídica.
+
 **Escopo reduzido pela decisão de 2026-08-28.** Com a licença protegendo só o
 download, nenhum dado financeiro sai do aparelho e nada disso chega a um
 servidor seu. O que você passa a tratar é apenas **e-mail e chave de licença** —
@@ -266,6 +322,55 @@ Itens:
 - Política de privacidade e termos antes do primeiro cadastro real.
 - Canal de contato do titular (art. 41; Resolução CD/ANPD nº 2/2022 simplifica DPO para pequeno porte).
 - Revisão por advogado antes de cobrar do primeiro cliente.
+
+### Fase 15b/11 — LGPD: exclusão de conta, política e termos (lado do app ✅ 2026-09-01)
+
+Passo 6 da spec da nuvem, que é o que libera as fases seguintes.
+
+**Apagar a conta virou função do app, não pedido por e-mail.** A LGPD dá o
+direito (art. 18) e a única forma honesta de oferecê-lo, num produto que promete
+não ter acesso aos dados, é o próprio usuário disparar. `cloud_apagar_conta`
+manda `DELETE /v1/me` com a palavra `APAGAR` no corpo e **só depois de o
+servidor confirmar** limpa o que era local: sessão em disco, entitlement em
+cache e versão do backup.
+
+Três decisões que valem registro:
+
+- **Os lançamentos não são apagados.** Eles nunca foram do servidor. Apagar a
+  conta devolve o app ao que ele era antes de existir conta — e apagar os dados
+  do aparelho junto seria destruir o que o usuário não pediu para destruir.
+- **A ordem é servidor primeiro.** Limpar o local antes deixaria o usuário sem
+  sessão e com a conta viva, sem caminho de volta para tentar de novo. `404`
+  conta como sucesso: a conta já não existe, que era o pedido.
+- **A confirmação viaja para o servidor.** Digitar `APAGAR` não é só atrito de
+  interface; o gateway exige a mesma palavra, para que um `DELETE` disparado por
+  engano não apague uma conta só por portar token válido.
+
+**Política e termos existem e estão linkados** (`landing/privacidade.html`,
+`landing/termos.html`, estilo em `landing/legal.css`). A política declara base
+legal (execução de contrato, art. 7º V — não consentimento), a tabela do que
+existe do meu lado e o que dela eu consigo ler, transferência internacional pela
+Cloudflare (art. 33), prazos de retenção e o caminho da exclusão. Os termos põem
+a perda de senha em destaque, e não em cláusula: sem a senha, o backup não volta
+— nem por mim.
+
+`landing/legal.test.js` (6 testes) trava o que quebra em silêncio: página legal
+que existe mas não está linkada, link para arquivo que não existe, e o aviso de
+senha perdida desaparecendo numa revisão de texto.
+
+**A rota do servidor já existia.** Conferido em 2026-09-01 contra o Worker no
+ar: `DELETE /v1/me` responde 401 sem token e 400 sem `{"confirmacao":"APAGAR"}`,
+apaga o blob do KV junto com a conta e as sessões, e grava `conta_apagada` na
+trilha de auditoria **sem o e-mail** — o registro da eliminação não pode ser ele
+próprio uma cópia do dado eliminado. A palavra de confirmação bateu nos dois
+lados sem ajuste.
+
+**Falta, e depende de você:**
+- Apagar uma conta de teste pelo app e conferir o `conta_apagada` na auditoria.
+- E-mail de contato do titular nas duas páginas (art. 41). Hoje elas remetem ao
+  canal por onde o app é entregue, porque o domínio próprio da fase 14 ainda não
+  existe.
+- Revisão por advogado antes de cobrar do primeiro cliente — segue valendo.
 
 ### Fase 16 — Landing page e release
 
@@ -331,6 +436,31 @@ Itens:
 
 ---
 
+## Onde este projeto se encaixa
+
+O Contr0l não é uma ilha: ele publica pelo **deploy-base** e aparece no
+**portal-geral**, e os dois têm nota no vault (`D:\Dev\Desenvolvimento\`).
+
+| Peça | Caminho |
+|---|---|
+| App (este repo) | `D:\Dev\Desenvolvimento\Projetos\Controle de gastos` |
+| Publicação e gateway | `D:\Dev\Desenvolvimento\Projetos\deploy-base` · nota `Projetos\deploy-base.md` |
+| Portal que agrega os apps | `D:\Dev\Desenvolvimento\Projetos\portal-geral` · nota `Projetos\Portal Geral.md` |
+| Binários publicados | repo privado `ShinuuL/Releases`, tag `contr0l-v<versão>` |
+| Worker em produção | `https://updates-gateway.sofaltaumaletr.workers.dev` |
+
+**O vault não tinha nota do Contr0l** — tinha [[Volume Mixer]] e [[deploy-base]],
+e faltava justamente o maior dos três. Criada em 2026-09-01:
+
+- `Projetos\Contr0l.md` — a nota, no estilo das que já existem. A cópia de
+  origem fica em [`docs/vault/Contr0l.md`](docs/vault/Contr0l.md); ao mudar algo
+  relevante do projeto, atualizar as duas.
+- `Projetos Índice.md` — entrada nova no topo da lista.
+- `Portal Geral.md` — o `contr0l` que era texto virou [[Contr0l]].
+- `deploy-base.md` — a nota falava só do download; ganhou as licenças e as rotas
+  da nuvem, que moram no mesmo Worker.
+
+---
 ## Notas de arquitetura
 
 - **Não há tabela `transactions` no banco.** O tipo `Transaction` lê da tabela `expenses`, que tem colunas `nature` (`'entrada'`/`'saida'`) e `status` (`'previsto'`/`'realizado'`). Essa é a arquitetura atual e não deve ser alterada sem nova migração.
@@ -403,7 +533,46 @@ secundário -- variante nova em `Button.tsx`.
 **Pendente:** validação em aparelho real do voltar e do color picker, e um PDF
 de extrato do Nubank para conferir o parser genérico com arquivo de verdade.
 
-### Fase 21 — Fundo do tema moranguinho em vetor (✅ 2026-08-30)
+**Atualização de 2026-09-01:** a importação do Nubank voltou a falhar em uso
+real, e não era o parser de novo — era a consulta de conciliação. Ver fase 22.
+
+### Fase 22 — Importação no aparelho e fundo do celular (✅ 2026-09-01)
+
+Duas correções vindas de uso real no Android.
+
+**A importação do Nubank falhava na conciliação, não no parser.** O CSV real lê
+70 de 70 linhas sem uma única ressalva — conferido de novo hoje, contra o arquivo
+de verdade, incluindo a gravação no SQLite com as cinco migrações aplicadas. O
+que quebrava era `findReconciliationCandidates`, que fazia **uma consulta por
+linha do extrato**: 70 idas e voltas de IPC, e bastava uma falhar para a prévia
+inteira morrer.
+
+Agora é **uma consulta só** para o extrato inteiro — janela da data mais antiga
+menos 3 dias até a mais recente mais 3 — com o casamento por valor e natureza
+feito sobre o resultado. Mesma semântica, 1/70 do tráfego.
+
+**O `catch {}` que engolia a causa foi o defeito de verdade.** A mensagem
+genérica era tudo que sobrava de qualquer falha, num aparelho onde não há console
+para conferir. A prévia passou a mostrar a causa junto: *"Não foi possível
+comparar o extrato com as movimentações: `<causa>`"*. Se voltar a falhar, a tela
+diz o que o SQLite reclamou em vez de deixar adivinhar.
+
+> **Honestidade sobre o diagnóstico:** contra um SQLite real, a consulta antiga
+> executa sem erro — inclusive com o mesmo binding que o `tauri-plugin-sql` faz,
+> em que número vira `f64`. A causa raiz **não foi provada**; o que se fez foi
+> eliminar a hipótese de volume e tornar as outras visíveis na próxima tentativa.
+
+**Fundo do moranguinho no celular voltou ao bitmap.** A fase 21b trocou os dois
+bitmaps por um ladrilho SVG e usou o mesmo caminho para celular e desktop. No
+aparelho a estampa ficou com a escala do ladrilho, e numa tela estreita isso muda
+o desenho que o app tinha. Agora a regra é por tamanho de tela: até 767px o
+`Fundo-Mobile.jpeg` original (`100% auto`, `repeat-y`, que só reduz e nunca
+amplia), acima disso o vetor — que continua resolvendo a pixelização em janela
+grande, que foi o motivo de ele existir.
+
+Pendente: confirmar as duas coisas no aparelho, com o mesmo CSV que falhou.
+
+### Fase 21b — Fundo do tema moranguinho em vetor (✅ 2026-08-30, revisto em 2026-09-01)
 
 O fundo do desktop era um AVIF de **740x493** esticado com `background-size:
 cover`. Numa janela 1080p isso amplia cerca de 2,6x em cada eixo — daí a
@@ -478,7 +647,59 @@ Itens (nenhum iniciado):
 - `VITE_DISTRIBUTION` e `decideAccess()` (declarados obsoletos na fase 15)
   voltam a ter uso -- reavaliar em vez de remover.
 
-### Fase 21 — Atualização automática no aparelho (avaliada em 2026-08-29, não iniciada)
+### Fase 21 — Atualização automática no aparelho (código entregue em 2026-09-01)
+
+> **Colisão de numeração resolvida em 2026-09-01:** o fundo em vetor também
+> tinha sido numerado 21. Como esta entrada foi registrada primeiro, ela ficou
+> com o número e a outra virou **21b**.
+
+**Entregue em 2026-09-01, menos a validação em aparelho.** A avaliação abaixo
+continua valendo palavra por palavra — inclusive a parte incômoda: *instalar
+sozinho não existe no Android*. O que o app faz é verificar, baixar e **abrir o
+instalador do sistema**; quem confirma é o usuário, num diálogo do Android.
+
+O que foi feito:
+
+- **`src-tauri/src/update.rs`** — consulta `/v1/apps/contr0l/latest`, confere a
+  assinatura Ed25519 do manifesto contra a chave pública do `deploy.toml`, baixa
+  o APK e só devolve o caminho se o **sha256 do manifesto assinado** bater. O
+  arquivo é escrito como `.parcial` e só ganha o nome final depois da
+  conferência: um download interrompido nunca se parece com um arquivo pronto.
+- **`src-tauri/gen/android/.../InstaladorPlugin.kt`** — plugin Tauri em Kotlin
+  que transforma o caminho em `content://` pelo FileProvider e dispara a Intent.
+  Desde o Android 7 passar `file://` para outro app lança
+  `FileUriExposedException`, e o instalador roda em outro processo.
+- **`src-tauri/src/instalador.rs`** — a ponte, com `permissão`/`pedir permissão`/
+  `abrir`. No Windows abre o NSIS baixado; em outras plataformas recusa.
+- **`REQUEST_INSTALL_PACKAGES`** no `AndroidManifest.xml`, com o comentário
+  dizendo o que ela **não** dá: nada é instalado sozinho.
+- **`UpdateBanner`** — faixa, não modal. Quem abriu o app veio lançar um gasto.
+
+Três decisões que valem registro:
+
+- **A canonicalização do manifesto é escrita à mão**, e não sai do
+  `serde_json::to_string`. A assinatura cobre o JSON com chaves ordenadas, sem
+  espaço e com acento cru (`ensure_ascii=False` do publicador em Python); a
+  ordenação do serde depende do feature `preserve_order`, que qualquer
+  dependência futura pode ligar sem avisar — e o sintoma seria *toda* release
+  virar "assinatura inválida". O teste usa o **envelope real do gateway**, com a
+  assinatura de verdade: é o que separa "acho que bate" de "bate".
+- **A permissão é explicada antes de gastar dado.** Se o aparelho ainda não
+  autorizou instalar apps desconhecidos, o fluxo para e explica — em vez de
+  baixar 84 MB para esbarrar na permissão no fim.
+- **O tamanho vai no rótulo do botão** ("Baixar e instalar (84 MB)"), não num
+  rodapé. Número que ninguém lê não avisa ninguém.
+
+Verificado aqui: 11 testes Rust (incluindo manifesto real, um byte trocado na
+URL derrubando a assinatura, e a regra de semver igual à do publicador), 11
+testes TS das regras de tela, `cargo check --target aarch64-linux-android` e
+`gradlew :app:compileArm64DebugKotlin` passando.
+
+**Falta:** rodar em aparelho — a checagem só tem efeito quando existir versão
+maior que a instalada, então o teste real é publicar uma 0.5.1 e ver a faixa
+aparecer, a permissão ser pedida e o instalador abrir. E o `versionCode` precisa
+subir a cada release, com **o mesmo certificado** de assinatura: o Android
+recusa a instalação por cima se o certificado mudar.
 
 **Resposta curta: dá, mas "instalar sozinho" não existe no Android.** O app pode
 verificar, baixar e abrir o instalador; quem confirma a instalação é sempre o
