@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   SENHA_MINIMA,
   camposVazios,
+  confirmacaoDeExclusaoValida,
+  CONFIRMACAO_EXCLUSAO,
   normalizarEmail,
   validarConta,
   type CamposConta,
@@ -78,5 +80,23 @@ describe("normalizarEmail", () => {
 describe("camposVazios", () => {
   it("comeca sem a ciencia marcada", () => {
     expect(camposVazios().cienteDaPerda).toBe(false);
+  });
+});
+
+describe("confirmacaoDeExclusaoValida", () => {
+  it("aceita a palavra com espaco em volta e em qualquer caixa", () => {
+    // Recusar "apagar" porque a tecla de maiuscula estava desligada seria
+    // implicancia, nao seguranca.
+    expect(confirmacaoDeExclusaoValida(CONFIRMACAO_EXCLUSAO)).toBe(true);
+    expect(confirmacaoDeExclusaoValida("apagar")).toBe(true);
+    expect(confirmacaoDeExclusaoValida("  Apagar  ")).toBe(true);
+  });
+
+  it("recusa vazio, palavra incompleta e texto a mais", () => {
+    // O botao de apagar fica desabilitado enquanto isto for falso, e o comando
+    // Rust confere a mesma regra antes de tocar a rede.
+    expect(confirmacaoDeExclusaoValida("")).toBe(false);
+    expect(confirmacaoDeExclusaoValida("apaga")).toBe(false);
+    expect(confirmacaoDeExclusaoValida("APAGAR TUDO")).toBe(false);
   });
 });

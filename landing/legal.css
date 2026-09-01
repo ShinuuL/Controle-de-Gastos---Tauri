@@ -1,0 +1,58 @@
+/* Estilo das paginas legais (privacidade e termos).
+   Arquivo separado, e nao inline como no index.html: aqui nao ha JS nenhum, e
+   duas paginas com o mesmo desenho nao devem ter duas copias do CSS que sairiam
+   de sincronia na primeira correcao. */
+:root{
+  --papel:#eef1f6;
+  --papel-alto:#f7f9fc;
+  --linha:#d5dce6;
+  --tinta:#0f172a;
+  --tinta-suave:#55627a;
+  --marca:#1d4ed8;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  --pixel:"Pixelify Sans","IBM Plex Mono",monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--papel);color:var(--tinta);
+  font-family:var(--sans);font-size:1rem;line-height:1.65;
+}
+.env{width:min(72ch,92vw);margin-inline:auto}
+.mm{font-family:var(--pixel);font-weight:700}
+
+.topo{border-bottom:1px solid var(--linha);padding-block:1.25rem;font-size:.9rem}
+.topo__int{display:flex;flex-wrap:wrap;gap:.75rem 1.5rem;justify-content:space-between;align-items:baseline}
+a{color:var(--marca)}
+a:hover{text-decoration:none}
+
+main{padding-block:3rem 4rem}
+h1{font-size:clamp(1.8rem,4vw,2.4rem);letter-spacing:-.02em;margin:0 0 .4rem;text-wrap:balance}
+.desde{font-family:var(--mono);font-size:.82rem;color:var(--tinta-suave);margin:0 0 2.5rem}
+h2{font-size:1.15rem;margin:2.5rem 0 .5rem;letter-spacing:-.01em}
+h3{font-size:1rem;margin:1.5rem 0 .35rem}
+p,li{color:var(--tinta-suave)}
+strong{color:var(--tinta);font-weight:600}
+ul{padding-left:1.15rem}
+li+li{margin-top:.4rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--papel-alto);border:1px solid var(--linha);border-radius:.25rem;padding:.05rem .3rem}
+
+/* Bloco de destaque para o que nao pode passar batido -- perda de senha, por
+   exemplo. E o unico recurso visual da pagina, para nao competir consigo mesmo. */
+.aviso{
+  border:1px solid var(--linha);border-left:3px solid var(--marca);
+  background:var(--papel-alto);border-radius:.4rem;
+  padding:1rem 1.15rem;margin:1.5rem 0;
+}
+.aviso p{margin:0}
+.aviso p+p{margin-top:.6rem}
+
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.93rem}
+th,td{text-align:left;vertical-align:top;padding:.55rem .6rem;border-bottom:1px solid var(--linha)}
+th{color:var(--tinta);font-weight:600;white-space:nowrap}
+td{color:var(--tinta-suave)}
+.rolagem{overflow-x:auto}
+
+.rodape{border-top:1px solid var(--linha);padding-block:2rem;font-size:.88rem;color:var(--tinta-suave)}
+.rodape__int{display:flex;flex-wrap:wrap;gap:1rem 2rem;justify-content:space-between;align-items:center}

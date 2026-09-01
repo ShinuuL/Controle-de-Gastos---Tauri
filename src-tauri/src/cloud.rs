@@ -297,6 +297,83 @@ pub async fn cloud_logout(
     Ok(())
 }
 
+/// Palavra que o usuario digita para confirmar a exclusao, e que o gateway
+/// exige no corpo do DELETE.
+///
+/// Dois botoes de "tem certeza?" nao seguram uma acao irreversivel; digitar
+/// segura. E a confirmacao viaja para o servidor porque um `DELETE` disparado
+/// por engano (ou por codigo que ninguem revisou) nao pode apagar uma conta so
+/// por ter token valido.
+pub const CONFIRMACAO_EXCLUSAO: &str = "APAGAR";
+
+/// Apaga a conta no servidor e todo vestigio dela neste aparelho (LGPD art. 18).
+///
+/// **Os lancamentos NAO sao apagados.** Eles nunca foram meus: estao no SQLite
+/// do aparelho e continuam la, funcionando sem conta como antes de existir uma.
+/// O que se apaga e o que estava do meu lado -- conta, e-mail, sessoes e o
+/// backup cifrado -- mais o que neste aparelho so servia para falar com ele:
+/// a sessao em disco, o entitlement em cache e a versao do backup.
+///
+/// A ordem importa: primeiro o servidor, depois o local. Limpar antes deixaria
+/// o usuario sem sessao e com a conta viva, sem caminho de volta para tentar de
+/// novo. `404` conta como sucesso -- a conta ja nao existe, que e o pedido.
+#[tauri::command]
+pub async fn cloud_apagar_conta(
+    app: tauri::AppHandle,
+    estado: tauri::State<'_, CloudState>,
+    confirmacao: String,
+) -> Result<(), CloudError> {
+    if confirmacao.trim().to_uppercase() != CONFIRMACAO_EXCLUSAO {
+        return Err(CloudError::nova(
+            "confirmacao_invalida",
+            "Digite APAGAR para confirmar a exclusao da conta.",
+        ));
+    }
+
+    let token = { estado.sessao.lock().unwrap().as_ref().map(|s| s.token.clone()) }
+        .ok_or_else(|| CloudError::nova("sem_sessao", "Entre na conta que voce quer apagar."))?;
+
+    let resp = reqwest::Client::new()
+        .delete(format!("{}/v1/me", base_url()))
+        .bearer_auth(&token)
+        .json(&serde_json::json!({ "confirmacao": CONFIRMACAO_EXCLUSAO }))
+        .send()
+        .await
+        .map_err(CloudError::de_rede)?;
+
+    let status = resp.status().as_u16();
+    if !(200..300).contains(&status) && status != 404 {
+        let texto = resp.text().await.unwrap_or_default();
+        let codigo = serde_json::from_str::<RespostaErro>(&texto)
+            .ok()
+            .and_then(|e| e.error)
+            .unwrap_or_else(|| "erro_desconhecido".into());
+        return Err(erro_do_gateway(status, &codigo));
+    }
+
+    *estado.sessao.lock().unwrap() = None;
+    crate::session_store::limpar(&app);
+    let _ = limpar_vestigios_locais(&app).await;
+    Ok(())
+}
+
+/// Apaga do banco local as duas tabelas que existem so por causa da conta.
+///
+/// Nao volta erro para o comando: a conta ja foi apagada no servidor quando
+/// isto roda, e falhar aqui nao desfaz aquilo. O pior caso e um cache orfao,
+/// que a proxima conta sobrescreve -- e o entitlement em cache e inutil sozinho,
+/// porque a leitura reconfere a assinatura contra a conta.
+async fn limpar_vestigios_locais(app: &tauri::AppHandle) -> Result<(), String> {
+    let pool = crate::recovery::abrir(app).await?;
+    for sql in ["DELETE FROM cloud_entitlement", "DELETE FROM cloud_backup_state"] {
+        sqlx::query(sql)
+            .execute(&pool)
+            .await
+            .map_err(|_| "falha ao limpar o estado da nuvem".to_string())?;
+    }
+    Ok(())
+}
+
 /// Sessao atual, para a UI saber o que mostrar no boot. Sem rede.
 #[tauri::command]
 pub fn cloud_sessao(
@@ -900,6 +977,20 @@ mod tests {
     #[test]
     fn kdf_malformado_nao_derruba_o_login() {
         assert_eq!(parse_kdf("{}").unwrap_err().codigo, "resposta_invalida");
+    }
+
+    #[test]
+    fn a_confirmacao_da_exclusao_aceita_espaco_e_caixa_mas_nao_outra_palavra() {
+        // O comando compara com esta mesma regra antes de tocar a rede. Digitar
+        // "apagar" com a tecla de maiuscula desligada nao pode ser recusado; e
+        // "apaga" ou vazio nao pode passar.
+        let vale = |digitado: &str| digitado.trim().to_uppercase() == CONFIRMACAO_EXCLUSAO;
+        assert!(vale("APAGAR"));
+        assert!(vale("apagar"));
+        assert!(vale("  Apagar  "));
+        assert!(!vale("apaga"));
+        assert!(!vale("APAGAR TUDO"));
+        assert!(!vale(""));
     }
 
     #[test]

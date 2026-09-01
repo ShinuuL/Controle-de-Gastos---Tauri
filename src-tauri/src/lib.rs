@@ -32,6 +32,7 @@ pub fn run() {
             cloud::cloud_backup_push,
             cloud::cloud_backup_pull,
             cloud::cloud_backup_auto,
+            cloud::cloud_apagar_conta,
             imports::confirm_statement_import,
             recovery::diagnose_database,
             recovery::repair_database

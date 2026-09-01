@@ -72,3 +72,15 @@ export function sessaoAtual(): Promise<Sessao | null> {
 export function entitlementAtual(): Promise<Entitlement | null> {
   return invoke<Entitlement | null>("cloud_entitlement");
 }
+
+/**
+ * Apaga a conta, as sessoes e o backup cifrado (LGPD art. 18).
+ *
+ * **Nao apaga os lancamentos deste aparelho** -- eles nunca sairam dele em
+ * claro, e o app volta a ser o que era antes de existir conta. A confirmacao
+ * vai como texto porque o Rust e o gateway a exigem: token valido sozinho nao
+ * autoriza apagar conta.
+ */
+export function apagarConta(confirmacao: string): Promise<void> {
+  return invoke<void>("cloud_apagar_conta", { confirmacao });
+}

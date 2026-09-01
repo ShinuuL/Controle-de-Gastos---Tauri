@@ -3,12 +3,21 @@ import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
 import {
   camposVazios,
+  confirmacaoDeExclusaoValida,
+  CONFIRMACAO_EXCLUSAO,
   normalizarEmail,
   validarConta,
   type CamposConta,
   type ModoConta,
 } from "./accountForm";
-import { criarConta, entrar, mensagemDoErro, sair, type Sessao } from "./authClient";
+import {
+  apagarConta,
+  criarConta,
+  entrar,
+  mensagemDoErro,
+  sair,
+  type Sessao,
+} from "./authClient";
 import { enviarBackup, restaurarBackup } from "../../lib/cloud/sync";
 
 /** Aviso curto sobre a ultima operacao de backup. */
@@ -42,6 +51,8 @@ export default function AccountModal({ open, onClose, sessao, onSessao }: Accoun
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [backup, setBackup] = useState<AvisoBackup | null>(null);
+  const [exclusao, setExclusao] = useState(false);
+  const [confirmacao, setConfirmacao] = useState("");
   const ocupado = enviando;
 
   const altera = <K extends keyof CamposConta>(chave: K, valor: CamposConta[K]) => {
@@ -58,6 +69,10 @@ export default function AccountModal({ open, onClose, sessao, onSessao }: Accoun
   const fechar = () => {
     setCampos(camposVazios());
     setErro(null);
+    // A area de exclusao nao pode continuar aberta na proxima vez que o modal
+    // subir: reabrir com o campo pronto convida ao acidente.
+    setExclusao(false);
+    setConfirmacao("");
     onClose();
   };
 
@@ -121,6 +136,25 @@ export default function AccountModal({ open, onClose, sessao, onSessao }: Accoun
       });
     } catch (falha) {
       setBackup({ tipo: "erro", texto: mensagemDoErro(falha) });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function apagar() {
+    setEnviando(true);
+    setErro(null);
+    try {
+      await apagarConta(confirmacao);
+      setExclusao(false);
+      setConfirmacao("");
+      onSessao(null);
+      onClose();
+    } catch (falha) {
+      // A falha aparece dentro da propria area de exclusao. Mandada para o
+      // aviso de backup, ela diria "erro" logo acima de dois botoes que nao
+      // foram os tocados.
+      setErro(mensagemDoErro(falha));
     } finally {
       setEnviando(false);
     }
@@ -190,6 +224,78 @@ export default function AccountModal({ open, onClose, sessao, onSessao }: Accoun
           <Button type="button" variant="ghost" onClick={encerrar} disabled={ocupado}>
             Sair da conta
           </Button>
+
+          {/* Apagar a conta e um direito (LGPD art. 18), entao mora aqui e nao
+              num e-mail de suporte. Fica atras de um clique e de uma palavra
+              digitada porque e irreversivel -- e, com E2E, irreversivel de
+              verdade: nao ha copia legivel para devolver. */}
+          {exclusao ? (
+            <div className="flex flex-col gap-3 rounded-lg border border-destructive/40 bg-background p-3">
+              <p className="text-sm font-medium text-destructive">Apagar a conta</p>
+              <p className="text-sm text-muted-foreground">
+                Apaga do servidor a conta, o e-mail e o backup cifrado. Não há como
+                desfazer, e não existe cópia legível para devolver depois.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                <strong className="text-foreground">
+                  Seus lançamentos continuam neste aparelho.
+                </strong>{" "}
+                O app volta a funcionar sem conta, como antes de você criar uma.
+              </p>
+              <div>
+                <label className={labelClass} htmlFor="conta-confirmacao-exclusao">
+                  Digite {CONFIRMACAO_EXCLUSAO} para confirmar
+                </label>
+                <input
+                  id="conta-confirmacao-exclusao"
+                  type="text"
+                  autoComplete="off"
+                  className={inputClass}
+                  value={confirmacao}
+                  onChange={(e) => setConfirmacao(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="flex-1"
+                  onClick={() => {
+                    setExclusao(false);
+                    setConfirmacao("");
+                  }}
+                  disabled={ocupado}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  className="flex-1"
+                  onClick={apagar}
+                  disabled={ocupado || !confirmacaoDeExclusaoValida(confirmacao)}
+                >
+                  Apagar para sempre
+                </Button>
+              </div>
+
+              {erro && (
+                <p role="alert" className="text-sm font-medium text-destructive">
+                  {erro}
+                </p>
+              )}
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-destructive"
+              onClick={() => setExclusao(true)}
+              disabled={ocupado}
+            >
+              Apagar minha conta
+            </Button>
+          )}
         </div>
       ) : (
         <form className="flex flex-col gap-4 p-4" onSubmit={enviar}>

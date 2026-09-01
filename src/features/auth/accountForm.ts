@@ -52,3 +52,21 @@ export function validarConta(modo: ModoConta, campos: CamposConta): string | nul
 export function normalizarEmail(email: string): string {
   return email.trim().toLowerCase();
 }
+
+/**
+ * Palavra que confirma a exclusao da conta. O mesmo texto e exigido pelo
+ * comando Rust e pelo gateway -- ver `CONFIRMACAO_EXCLUSAO` em `cloud.rs`.
+ */
+export const CONFIRMACAO_EXCLUSAO = "APAGAR";
+
+/**
+ * Digitar segura o que dois botoes de "tem certeza?" nao seguram: apagar a
+ * conta e o backup e irreversivel, e com criptografia ponta a ponta nao existe
+ * quem devolva depois.
+ *
+ * Aceita espaco em volta e caixa qualquer -- recusar "apagar" porque a tecla de
+ * maiuscula estava desligada seria implicancia, nao seguranca.
+ */
+export function confirmacaoDeExclusaoValida(digitado: string): boolean {
+  return digitado.trim().toUpperCase() === CONFIRMACAO_EXCLUSAO;
+}

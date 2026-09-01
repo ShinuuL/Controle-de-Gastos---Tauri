@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Política de Privacidade — Contr0l</title>
+<meta name="description" content="O que o Contr0l coleta, o que não coleta, onde os dados ficam e como pedir a exclusão. Lançamentos financeiros não saem do aparelho em claro.">
+<meta name="robots" content="index,follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="legal.css">
+</head>
+<body>
+
+<header class="topo">
+  <div class="env topo__int">
+    <span><span class="mm">Contr0l</span></span>
+    <span><a href="index.html">Voltar para a página do app</a> · <a href="termos.html">Termos de Uso</a></span>
+  </div>
+</header>
+
+<main class="env">
+
+<h1>Política de Privacidade</h1>
+<p class="desde">Versão 1 · vigente desde 1º de setembro de 2026</p>
+
+<p>
+  Esta política diz o que acontece com os seus dados quando você usa o Contr0l.
+  Ela é escrita para ser lida, não para se proteger de você: onde houver uma
+  troca ruim, ela está dita na cara e não escondida no meio de uma lista.
+</p>
+
+<div class="aviso">
+  <p>
+    <strong>O resumo, e é o que importa:</strong> os seus lançamentos financeiros
+    ficam no seu aparelho. Se você criar uma conta para ter backup, o que sobe é
+    um arquivo cifrado <em>dentro</em> do seu aparelho, com uma chave derivada da
+    sua senha. O servidor recebe esse arquivo fechado e o guarda fechado — não
+    existe cópia legível dos seus gastos do meu lado, e não existe painel onde eu
+    veja quanto você gasta.
+  </p>
+  <p>
+    <strong>A consequência disso:</strong> se você esquecer a senha da conta, o
+    backup não pode ser recuperado — nem por mim. Não há "recuperar senha" que
+    devolva os dados, porque a chave é sua. É o mesmo motivo pelo qual eu não
+    consigo ler nada.
+  </p>
+</div>
+
+<h2>1. Quem trata os dados</h2>
+<p>
+  O controlador é <strong>Gabriel Garcia</strong>, pessoa física, desenvolvedor
+  do Contr0l. Contato do titular para qualquer pedido desta política, inclusive
+  exclusão (art. 41 da LGPD):
+  <!-- TODO(fase 14): trocar pelo e-mail do dominio proprio quando ele existir.
+       Enquanto nao existir, use o canal por onde voce ja entrega o app. -->
+  <strong>o mesmo canal por onde você recebeu o app</strong>.
+</p>
+
+<h2>2. O app sem conta: nada sai do aparelho</h2>
+<p>
+  Instalar e usar o Contr0l não exige cadastro. Nessa forma de uso, o app grava
+  tudo num banco SQLite dentro da área privada do próprio aplicativo, no seu
+  aparelho, e <strong>não faz requisição de rede nenhuma</strong> com os seus
+  lançamentos. Não há anúncios, não há SDK de terceiros e não há telemetria
+  enviada para fora: as métricas de funcionamento que o app coleta existem apenas
+  na memória durante a execução e morrem quando ele fecha.
+</p>
+<p>
+  A contrapartida está dita na página do app: sem conta, se você desinstalar ou
+  perder o aparelho, os lançamentos vão junto. Eu não tenho cópia para devolver.
+</p>
+
+<h2>3. O que é tratado quando você cria uma conta</h2>
+<p>
+  A conta é <strong>opcional</strong> e serve para duas coisas: guardar um backup
+  cifrado e provar o seu acesso a funções pagas. O que existe do meu lado:
+</p>
+
+<div class="rolagem">
+<table>
+  <thead>
+    <tr><th>Dado</th><th>Para que serve</th><th>Eu consigo ler?</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>E-mail</td>
+      <td>Identificar a conta e falar com você sobre ela</td>
+      <td>Sim</td>
+    </tr>
+    <tr>
+      <td>Verificador da senha</td>
+      <td>Conferir o login. É um valor derivado da sua senha por Argon2id com sal próprio — a senha em si nunca chega ao servidor</td>
+      <td>Não recupero a senha a partir dele</td>
+    </tr>
+    <tr>
+      <td>Sais e parâmetros de derivação, chave de backup embrulhada</td>
+      <td>Permitir que o <em>seu</em> aparelho reconstrua a chave a partir da sua senha</td>
+      <td>Inúteis sem a sua senha</td>
+    </tr>
+    <tr>
+      <td>Token de sessão</td>
+      <td>Manter você conectado sem pedir a senha a cada uso</td>
+      <td>Sim, e expira</td>
+    </tr>
+    <tr>
+      <td>Backup do banco de dados</td>
+      <td>Restaurar seus lançamentos ao reinstalar ou trocar de aparelho</td>
+      <td><strong>Não.</strong> Chega cifrado (XChaCha20-Poly1305) e é guardado como um arquivo opaco</td>
+    </tr>
+    <tr>
+      <td>Situação do pagamento e data de validade</td>
+      <td>Liberar função paga e trial</td>
+      <td>Sim</td>
+    </tr>
+    <tr>
+      <td>Chave de licença e e-mail de quem comprou</td>
+      <td>Liberar o download do app quando ele for pago</td>
+      <td>Sim</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  <strong>Nenhum lançamento, valor, categoria ou descrição aparece nessa lista.</strong>
+  Eles só existem em claro no seu aparelho e, cifrados, dentro do arquivo de
+  backup.
+</p>
+
+<h2>4. Base legal e finalidade</h2>
+<p>
+  O tratamento acima se apoia na <strong>execução do contrato</strong> celebrado
+  com você (art. 7º, V, da LGPD), e não em consentimento: sem e-mail e sem
+  verificador de senha não existe conta, e sem conta não existe backup nem acesso
+  pago. Cada dado tem uma finalidade única, a da tabela — nada é usado para
+  perfilamento, publicidade ou venda a terceiros. Não há venda de dados, em
+  nenhuma hipótese.
+</p>
+
+<h2>5. Metadado de funcionamento</h2>
+<p>
+  Uma distinção que eu me comprometo a manter: <strong>dado financeiro</strong>
+  não sai do aparelho em claro, nunca. <strong>Metadado de funcionamento</strong>
+  — versão instalada, situação do entitlement, data do último backup — passa a
+  trafegar quando você usa conta, verificação de atualização ou função paga.
+  Prometer "zero internet" e voltar atrás depois seria propaganda falsa; a
+  promessa que eu faço é a primeira, e ela não muda.
+</p>
+
+<h2>6. Com quem os dados são compartilhados</h2>
+<p>
+  Com nenhum parceiro comercial. Existem apenas os operadores de infraestrutura
+  necessários para o serviço funcionar:
+</p>
+<ul>
+  <li>
+    <strong>Cloudflare</strong> (Workers, KV e D1): executa o servidor de contas e
+    guarda o arquivo de backup cifrado.
+  </li>
+  <li>
+    <strong>Provedor de pagamento</strong>, quando houver cobrança: trata o
+    pagamento e me devolve apenas a confirmação. Dados de cartão não passam por
+    mim nem pelo app.
+  </li>
+</ul>
+<p>
+  <strong>Transferência internacional (art. 33 da LGPD):</strong> a infraestrutura
+  da Cloudflare é distribuída globalmente, então e-mail, situação de conta e o
+  arquivo cifrado podem ser armazenados e processados fora do Brasil. O arquivo
+  de backup viaja e repousa cifrado, o que é o motivo de essa transferência não
+  expor seus lançamentos.
+</p>
+
+<h2>7. Por quanto tempo</h2>
+<ul>
+  <li><strong>Conta, e-mail e backup:</strong> enquanto a conta existir.</li>
+  <li><strong>Sessões:</strong> expiram por conta própria e são apagadas quando você sai.</li>
+  <li><strong>Registro fiscal de um pagamento:</strong> mantido pelo prazo legal, mesmo depois de a conta ser apagada. É obrigação própria, com base legal própria (art. 7º, II).</li>
+</ul>
+
+<h2>8. Seus direitos (art. 18)</h2>
+<p>
+  Você pode pedir confirmação de tratamento, acesso, correção, portabilidade e
+  eliminação. Dois deles não dependem de mim e você exerce sozinho, na hora:
+</p>
+<ul>
+  <li>
+    <strong>Eliminação:</strong> no app, abra <em>Sua conta</em> → <em>Apagar
+    minha conta</em>. Isso apaga do servidor a conta, o e-mail, as sessões e o
+    backup cifrado. É imediato e não tem volta.
+  </li>
+  <li>
+    <strong>Portabilidade e acesso:</strong> os seus lançamentos estão num arquivo
+    SQLite no seu próprio aparelho — o formato é aberto e legível por qualquer
+    ferramenta de banco de dados.
+  </li>
+</ul>
+<p>
+  Apagar a conta <strong>não apaga os lançamentos do seu aparelho</strong>: eles
+  nunca foram meus, e o app volta a funcionar sem conta, como antes de você criar
+  uma. Para os demais pedidos, use o canal de contato do item 1.
+</p>
+
+<h2>9. Segurança</h2>
+<ul>
+  <li>Backup cifrado no aparelho antes de qualquer byte tocar a rede, com chave derivada da sua senha por Argon2id.</li>
+  <li>A senha, a chave e o token de sessão vivem no processo nativo do app, nunca no JavaScript da interface.</li>
+  <li>Toda a comunicação usa HTTPS.</li>
+  <li>Um backup adulterado ou de outra conta falha na verificação e é recusado <em>antes</em> de escrever qualquer coisa no seu aparelho.</li>
+</ul>
+<p>
+  Segurança de dado que não existe é a mais barata: a arquitetura foi escolhida
+  para eu ter o mínimo possível de coisa sua.
+</p>
+
+<h2>10. Crianças e adolescentes</h2>
+<p>
+  O Contr0l não é dirigido a menores de 18 anos e não pede idade. Se um
+  responsável identificar uma conta criada por menor sob sua guarda, o pedido de
+  exclusão pelo canal de contato é atendido.
+</p>
+
+<h2>11. Mudanças nesta política</h2>
+<p>
+  Mudança de política é aviso, não surpresa. Quando algo material mudar, a versão
+  e a data no topo desta página mudam, e a alteração é anunciada na página do app
+  antes de valer. Versões anteriores continuam disponíveis a pedido.
+</p>
+
+</main>
+
+<footer class="rodape">
+  <div class="env rodape__int">
+    <span><span class="mm">Contr0l</span> · feito por Gabriel Garcia</span>
+    <span><a href="index.html">Página do app</a> · <a href="termos.html">Termos de Uso</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

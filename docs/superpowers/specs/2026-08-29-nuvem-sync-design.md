@@ -289,7 +289,30 @@ revalida quando há rede.
    `wrangler secret put ENTITLEMENT_KEY` e a pública em `CHAVE_ENTITLEMENT`
    (`src-tauri/src/cloud.rs`). Sem o par o app funciona, mas **não há carência
    offline** — nada conta como verificado, que é o comportamento correto.
-6. LGPD (fase 15b): política, termos, `DELETE /v1/me` verificado, aviso de perda de senha.
+6. LGPD (fase 15b) — **lado do app entregue em 2026-09-01:**
+   - `cloud_apagar_conta` (Rust) chama `DELETE /v1/me` com a palavra
+     `APAGAR` no corpo, e só depois de o servidor confirmar limpa a sessão em
+     disco, o entitlement em cache e a versão do backup. Os lançamentos **não**
+     são apagados: nunca foram do servidor, e o app volta a funcionar sem conta.
+   - Botão *Apagar minha conta* no `AccountModal`, atrás de um clique e da
+     palavra digitada, com o que sai e o que fica escrito ao lado.
+   - `landing/privacidade.html` e `landing/termos.html`, linkadas no rodapé e na
+     seção de privacidade da landing; regra travada em `landing/legal.test.js`.
+   - Aviso de perda de senha já existia no cadastro (caixa de ciência) e agora
+     aparece também nas duas páginas.
+
+   **`DELETE /v1/me` já existia no Worker e já está no ar** (conferido em
+   2026-09-01: 401 sem token, 400 sem `{"confirmacao":"APAGAR"}`, `apagarConta`
+   em `gateway/src/auth.js`). O contrato do app foi escrito igual ao dele por
+   coincidência de desenho, não por sorte — a palavra `APAGAR` está nos dois
+   lados e nos testes dos dois lados. O gateway apaga o blob do KV, a conta e as
+   sessões, e registra `conta_apagada` na trilha de auditoria sem o e-mail.
+
+   **Falta:** o e-mail de contato do titular nas duas páginas legais, que hoje
+   remete ao canal por onde o app é entregue porque o domínio próprio (fase 14)
+   ainda não existe, e o teste de ponta a ponta em aparelho. Passo a passo de
+   deploy e o estado real da infraestrutura em
+   [`docs/deploy-do-gateway.md`](../../deploy-do-gateway.md).
 
 Os itens 5 e 6 são o que libera as fases seguintes; 1–4 são pré-requisito deles.
 
