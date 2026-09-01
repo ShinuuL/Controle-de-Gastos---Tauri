@@ -55,35 +55,47 @@ describe("statement import repository", () => {
     invoke.mockReset();
   });
 
-  it("queries reconciliation candidates by amount, nature and a parameterized date window", async () => {
+  it("consulta os candidatos do extrato inteiro numa unica janela parametrizada", async () => {
     const fake = createCandidateFakeDb();
     getDb.mockResolvedValue(fake.db);
 
     await expect(
       findReconciliationCandidates([
-        {
-          date: "2026-01-10",
-          amount_cents: 1250,
-          nature: "saida",
-        },
+        { date: "2026-01-10", amount_cents: 1250, nature: "saida" },
+        { date: "2026-01-31", amount_cents: 900, nature: "entrada" },
       ]),
     ).resolves.toEqual([
       expect.objectContaining({ id: "expense-1", description: "Almoço" }),
     ]);
 
     expect(fake.selectCalls).toHaveLength(1);
-    expect(fake.selectCalls[0]?.query).toContain("e.amount_cents = $1");
-    expect(fake.selectCalls[0]?.query).toContain("e.nature = $2");
-    expect(fake.selectCalls[0]?.query).toContain("e.date >= date($3, $4)");
-    expect(fake.selectCalls[0]?.query).toContain("e.date <= date($3, $5)");
+    expect(fake.selectCalls[0]?.query).toContain("e.date >= date($1, $2)");
+    expect(fake.selectCalls[0]?.query).toContain("e.date <= date($3, $4)");
     expect(fake.selectCalls[0]?.query).not.toContain("description =");
     expect(fake.selectCalls[0]?.values).toEqual([
-      1250,
-      "saida",
       "2026-01-10",
       "-3 days",
+      "2026-01-31",
       "+3 days",
     ]);
+  });
+
+  it("descarta a movimentacao existente cujo valor ou natureza nao batem com nenhuma linha", async () => {
+    const fake = createCandidateFakeDb();
+    getDb.mockResolvedValue(fake.db);
+
+    await expect(
+      findReconciliationCandidates([
+        { date: "2026-01-10", amount_cents: 1250, nature: "entrada" },
+      ]),
+    ).resolves.toEqual([]);
+  });
+
+  it("nao consulta o banco quando o extrato nao tem linha valida", async () => {
+    getDb.mockResolvedValue(createCandidateFakeDb().db);
+
+    await expect(findReconciliationCandidates([])).resolves.toEqual([]);
+    expect(getDb).not.toHaveBeenCalled();
   });
 
   it("deduplica pelo id a movimentação existente que cai na janela de várias linhas", async () => {
@@ -97,7 +109,7 @@ describe("statement import repository", () => {
       ]),
     ).resolves.toHaveLength(1);
 
-    expect(fake.selectCalls).toHaveLength(2);
+    expect(fake.selectCalls).toHaveLength(1);
   });
 
   it("delegates confirmation atomically to the typed Tauri command", async () => {

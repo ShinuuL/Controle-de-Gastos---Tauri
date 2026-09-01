@@ -18,40 +18,55 @@ type CandidateLookupRow = Pick<
 >;
 
 /**
- * Busca as movimentações já gravadas que podem ser a mesma linha do extrato.
+ * Busca as movimentacoes ja gravadas que podem ser a mesma linha do extrato.
  *
- * A janela de dias vem de `RECONCILIATION_DAY_WINDOW` e é aplicada no SQL para
- * não trazer o mês inteiro para a memória. A descrição não entra no filtro de
- * propósito: é justamente quando ela difere -- lançamento digitado à mão contra
- * texto do banco -- que a duplicata passava batido.
+ * E uma consulta so para o extrato inteiro: a janela vai da data mais antiga
+ * menos `RECONCILIATION_DAY_WINDOW` ate a mais recente mais a mesma folga, e o
+ * casamento por valor e natureza e feito aqui, sobre o resultado. Antes era uma
+ * consulta por linha -- 70 idas e voltas de IPC para um extrato mensal do
+ * Nubank, e bastava uma falhar para a previa inteira morrer com "nao foi
+ * possivel comparar o extrato com as movimentacoes".
  *
- * O resultado é deduplicado por `id` porque a mesma movimentação existente cai
- * na janela de várias linhas do extrato.
+ * A descricao continua fora do filtro de proposito: e justamente quando ela
+ * difere -- lancamento digitado a mao contra texto do banco -- que a duplicata
+ * passava batido.
+ *
+ * O resultado e deduplicado por `id` porque a mesma movimentacao existente cai
+ * na janela de varias linhas do extrato.
  */
 export async function findReconciliationCandidates(
   rows: CandidateLookupRow[],
 ): Promise<ReconciliationCandidate[]> {
   return traceOperation("statementImport.findCandidates", async () => {
-    const byId = new Map<string, ReconciliationCandidate>();
+    const wanted = rows.map((row) => ({
+      date: validateDate(row.date),
+      amount_cents: validateAmount(row.amount_cents),
+      nature: validateNature(row.nature),
+    }));
+    if (wanted.length === 0) return [];
+
+    const dates = wanted.map((row) => row.date).sort();
     const db = await getDb();
-    for (const row of rows) {
-      const date = validateDate(row.date);
-      const amountCents = validateAmount(row.amount_cents);
-      const nature = validateNature(row.nature);
-      const found = await db.select<ReconciliationCandidate[]>(
-        `SELECT e.id, e.date, e.description, e.amount_cents, e.nature, e.import_fingerprint
+    const found = await db.select<ReconciliationCandidate[]>(
+      `SELECT e.id, e.date, e.description, e.amount_cents, e.nature, e.import_fingerprint
          FROM expenses e
-         WHERE e.amount_cents = $1 AND e.nature = $2
-           AND e.date >= date($3, $4) AND e.date <= date($3, $5)`,
-        [
-          amountCents,
-          nature,
-          date,
-          `-${RECONCILIATION_DAY_WINDOW} days`,
-          `+${RECONCILIATION_DAY_WINDOW} days`,
-        ],
-      );
-      for (const candidate of found) byId.set(candidate.id, candidate);
+         WHERE e.date >= date($1, $2) AND e.date <= date($3, $4)`,
+      [
+        dates[0],
+        `-${RECONCILIATION_DAY_WINDOW} days`,
+        dates[dates.length - 1],
+        `+${RECONCILIATION_DAY_WINDOW} days`,
+      ],
+    );
+
+    const keys = new Set(
+      wanted.map((row) => `${row.amount_cents}|${row.nature}`),
+    );
+    const byId = new Map<string, ReconciliationCandidate>();
+    for (const candidate of found) {
+      if (keys.has(`${candidate.amount_cents}|${candidate.nature}`)) {
+        byId.set(candidate.id, candidate);
+      }
     }
     return [...byId.values()];
   });

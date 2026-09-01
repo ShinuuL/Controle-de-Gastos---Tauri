@@ -298,4 +298,27 @@ describe("controlador da importação na tela de movimentações", () => {
       message: `Este arquivo tem mais de ${MAX_IMPORT_REVIEW_ROWS} linhas. Exporte um período menor para revisar a importação.`,
     });
   });
+
+  it("leva a causa da consulta para a mensagem de erro da previa", async () => {
+    const bytes = new TextEncoder().encode(
+      `Data,Valor,Identificador,Descricao
+01/08/2026,-13.12,abc,Mercado`,
+    );
+
+    const state = await prepareImportPreview(
+      { fileName: "NU_extrato.csv", bytes: bytes.buffer },
+      {
+        async findCandidates() {
+          throw new Error("no such column: e.import_fingerprint");
+        },
+        reconcile: reconcileStatement,
+      },
+    );
+
+    expect(state).toEqual({
+      kind: "error",
+      message:
+        "Não foi possível comparar o extrato com as movimentações: no such column: e.import_fingerprint",
+    });
+  });
 });

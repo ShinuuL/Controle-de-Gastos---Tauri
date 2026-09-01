@@ -115,10 +115,13 @@ export async function prepareImportPreview(
         issues: parsed.issues,
       },
     };
-  } catch {
+  } catch (error) {
+    // A causa vai junto. Engolir a mensagem deixava "não foi possível comparar"
+    // como unica pista de qualquer falha da consulta -- e a falha so acontece no
+    // aparelho, onde nao ha console para conferir.
     return {
       kind: "error",
-      message: "Não foi possível comparar o extrato com as movimentações.",
+      message: `Não foi possível comparar o extrato com as movimentações: ${errorMessage(error, "causa desconhecida")}`,
     };
   }
 }
