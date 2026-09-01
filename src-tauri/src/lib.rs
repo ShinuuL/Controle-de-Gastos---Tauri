@@ -7,6 +7,8 @@ mod crypto;
 mod imports;
 mod migrations;
 mod recovery;
+mod instalador;
+mod update;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -16,6 +18,7 @@ pub fn run() {
                 .add_migrations("sqlite:controle-de-gastos.db", migrations::migrations())
                 .build(),
         )
+        .plugin(instalador::init())
         .manage(cloud::CloudState::default())
         // Antes da webview e antes de qualquer conexao SQLite: e a unica janela
         // em que trocar o arquivo do banco e seguro.
@@ -35,6 +38,12 @@ pub fn run() {
             cloud::cloud_apagar_conta,
             imports::confirm_statement_import,
             recovery::diagnose_database,
+            update::atualizacao_verificar,
+            update::atualizacao_dispensar,
+            update::atualizacao_baixar,
+            instalador::instalador_permissao,
+            instalador::instalador_pedir_permissao,
+            instalador::instalador_abrir,
             recovery::repair_database
         ])
         .run(tauri::generate_context!())

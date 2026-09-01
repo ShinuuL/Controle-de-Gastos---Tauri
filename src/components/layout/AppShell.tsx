@@ -11,6 +11,7 @@ import TransactionsScreen from "../../features/transactions/TransactionsScreen";
 import AccountModal from "../../features/auth/AccountModal";
 import { sessaoAtual, type Sessao } from "../../features/auth/authClient";
 import { useBackupAutomatico } from "../../lib/cloud/useBackupAutomatico";
+import UpdateBanner from "../../features/update/UpdateBanner";
 
 export default function AppShell() {
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
@@ -71,7 +72,12 @@ export default function AppShell() {
         conta={sessao ? sessao.email : "Conta"}
         onConta={() => setContaAberta(true)}
       />
-      <main className="min-w-0 flex-1 pb-20 md:pb-0">{screen}</main>
+      <main className="min-w-0 flex-1 pb-20 md:pb-0">
+        {/* Acima do conteudo e abaixo da navegacao: e um aviso, nao uma tela.
+            Some sozinho quando nao ha versao nova. */}
+        <UpdateBanner />
+        {screen}
+      </main>
       <BottomNav active={activeTab} onSelect={setActiveTab} />
       <AccountModal
         open={contaAberta}

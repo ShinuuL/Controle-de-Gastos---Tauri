@@ -1,0 +1,37 @@
+{
+  "manifest": {
+    "schema": 1,
+    "app": "contr0l",
+    "channel": "stable",
+    "version": "0.5.0",
+    "released_at": "2026-08-31T02:08:25Z",
+    "mandatory": false,
+    "min_version": null,
+    "notes": "## Contr0l 0.5.0\n\nPrimeira versão com **instalador para Windows** e com **backup na nuvem**.\n\n### Windows\n\nO app agora tem instalador próprio (`contr0l-0.5.0.exe`, 9 MB). Ele não é\nassinado com certificado de editor, então o Windows mostra o aviso do SmartScreen\nna primeira execução: em **Mais informações → Executar assim mesmo**.\n\nA página de download passa a oferecer automaticamente o arquivo certo para o\naparelho de quem acessa.\n\n### Backup na nuvem — opcional, e cifrado no aparelho\n\nO app continua abrindo e funcionando **sem conta e sem internet**. Se você criar\numa conta, ele passa a guardar uma cópia do seu banco na nuvem, e ela volta\nquando você reinstalar ou trocar de aparelho.\n\nO que sobe é um arquivo cifrado com uma chave derivada da sua senha, que **nunca\nsai do aparelho**. O servidor recebe o arquivo fechado e guarda fechado.\n\n**Se você esquecer a senha, o backup não pode ser recuperado — nem pelo\ndesenvolvedor.** Não existe \"recuperar conta\" que devolva os dados, porque a\nchave é sua. É o mesmo motivo pelo qual ninguém mais consegue ler o que está lá.\n\nO envio acontece sozinho ao abrir o app e ao sair dele, no máximo uma vez por\nhora. Sem internet, nada trava: o app continua sendo o de sempre.\n\n### Tema moranguinho\n\nO fundo era uma imagem e ficava pixelado em tela grande. Virou desenho vetorial,\nnítido em qualquer tamanho de janela — e 15x mais leve.\n\n### Observações\n\n- O APK ficou maior (88 MB, contra 73 MB da 0.4.1) por causa das bibliotecas de\n  criptografia e de rede que o backup exige.\n- Quem não criar conta não é afetado por nada disso.\n",
+    "artifacts": [
+      {
+        "platform": "android",
+        "arch": "universal",
+        "kind": "apk",
+        "filename": "contr0l-0.5.0.apk",
+        "size": 87920201,
+        "sha256": "8e513581b60a1f018b33de4b9412c8eb8496e22394f1e9b1734a73c90325547e",
+        "url": "https://updates-gateway.sofaltaumaletr.workers.dev/v1/apps/contr0l/download/0.5.0/contr0l-0.5.0.apk"
+      },
+      {
+        "platform": "windows",
+        "arch": "x64",
+        "kind": "exe",
+        "filename": "contr0l-0.5.0.exe",
+        "size": 8948012,
+        "sha256": "136b9be09c6a9004a859fc43faae6e1907aef1aafbdd122e9b62642001396e48",
+        "url": "https://updates-gateway.sofaltaumaletr.workers.dev/v1/apps/contr0l/download/0.5.0/contr0l-0.5.0.exe"
+      }
+    ]
+  },
+  "signature": {
+    "alg": "ed25519",
+    "key_id": "dcbd34553e007416",
+    "sig": "6XaQ9i0JwLnx8x+ia8nWCrSlEngFa5+JjHCzLKmlnXqQ2SDVNLY5rkfP4g18+ZQHoh9Esjj4enSiCVlU6U4qBg=="
+  }
+}

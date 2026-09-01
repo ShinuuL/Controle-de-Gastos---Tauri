@@ -29,6 +29,7 @@ rand = "0.8"
 zeroize = { version = "1", features = ["zeroize_derive"] }
 base64 = "0.22"
 ed25519-dalek = "2"
+sha2 = "0.10"
 # rustls em vez do TLS do sistema: o mesmo binario vale para desktop e Android,
 # sem depender de openssl instalado.
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }

@@ -2,6 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Atualizacao pelo proprio app (fase 21). NAO instala nada sozinho: esta
+         permissao apenas deixa o app ABRIR o instalador do sistema, que exibe o
+         dialogo de confirmacao. O usuario ainda precisa liberar "instalar apps
+         desconhecidos" para o Contr0l, numa tela do proprio Android. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
