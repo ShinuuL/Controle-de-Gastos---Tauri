@@ -7,11 +7,21 @@
 //!
 //! O reparo aqui e "stamping": corrige o checksum registrado quando o schema
 //! comprova que a migracao ja foi de fato aplicada. Nao reescreve dados.
+//!
+//! Ha um segundo dano, causado pelo proprio reparo de uma versao anterior: ele
+//! carimbava TODA migracao ausente com base numa unica evidencia (as colunas da
+//! v3). Num aparelho onde a v4 ainda estava pendente, ela foi registrada como
+//! aplicada sem o `ALTER TABLE` nunca ter rodado -- e o sqlx, vendo o carimbo,
+//! nunca mais a aplica. O app abre normalmente e so quebra meses depois, ao
+//! importar um extrato: "no such column: e.import_fingerprint".
+//!
+//! Para esse caso o reparo reaplica o SQL da migracao. E seguro justamente
+//! porque so acontece quando o schema PROVA que o efeito esta ausente.
 
 use std::path::PathBuf;
 
 use serde::Serialize;
-use sqlx::{migrate::MigrationType, Row, SqlitePool};
+use sqlx::{migrate::MigrationType, Executor, Row, SqlitePool};
 use tauri::{AppHandle, Manager};
 
 use crate::migrations::migrations;
@@ -38,6 +48,9 @@ pub struct Diagnosis {
     pub divergentes: Vec<i64>,
     /// Versoes que o codigo tem mas o banco nunca registrou.
     pub ausentes: Vec<i64>,
+    /// Versoes registradas como aplicadas cujo efeito nao esta no schema.
+    /// Carimbo mentiroso: o sqlx nunca mais vai aplica-las sozinho.
+    pub sem_efeito: Vec<i64>,
     pub colunas_de_transacao_presentes: bool,
 }
 
@@ -46,6 +59,8 @@ pub struct RepairOutcome {
     pub backup: String,
     pub corrigidas: Vec<i64>,
     pub carimbadas: Vec<i64>,
+    /// Versoes cujo SQL foi rodado de novo por estarem carimbadas sem efeito.
+    pub reaplicadas: Vec<i64>,
 }
 
 /// Checksums que o sqlx espera para as migracoes atuais. Usa o proprio
@@ -69,23 +84,26 @@ fn checksums_esperados() -> Vec<(i64, Vec<u8>)> {
 
 /// O efeito desta migracao ja esta no schema?
 ///
-/// **Toda migracao nova precisa entrar aqui.** O padrao e `false`, e isso e
-/// deliberado: carimbar sem evidencia registraria como aplicada uma migracao
-/// que nunca rodou, e a tabela ou coluna dela nunca mais seria criada -- falha
-/// silenciosa, meses depois, sem nada no historico que explique.
-async fn efeito_presente(pool: &SqlitePool, versao: i64) -> Result<bool, sqlx::Error> {
+/// **Toda migracao nova precisa entrar aqui.** `None` quer dizer "esta versao
+/// nao sabe se reconhecer no schema": vale para a v1 e a v2, que criam o schema
+/// base, e para uma versao nova que esqueceram de declarar. Quem chama trata
+/// `None` como ausencia de evidencia -- nao carimba e nao reaplica. Carimbar
+/// sem evidencia registraria como aplicada uma migracao que nunca rodou, e a
+/// coluna dela nunca mais seria criada; reaplicar sem evidencia rodaria de novo
+/// um SQL que talvez ja tenha rodado.
+async fn efeito_presente(pool: &SqlitePool, versao: i64) -> Result<Option<bool>, sqlx::Error> {
     Ok(match versao {
-        3 => {
+        3 => Some(
             tem_coluna(pool, "expenses", "nature").await?
                 && tem_coluna(pool, "expenses", "status").await?
-                && tem_coluna(pool, "categories", "nature").await?
-        }
-        4 => tem_coluna(pool, "expenses", "import_fingerprint").await?,
-        5 => {
+                && tem_coluna(pool, "categories", "nature").await?,
+        ),
+        4 => Some(tem_coluna(pool, "expenses", "import_fingerprint").await?),
+        5 => Some(
             tabela_existe(pool, "cloud_entitlement").await?
-                && tabela_existe(pool, "cloud_backup_state").await?
-        }
-        _ => false,
+                && tabela_existe(pool, "cloud_backup_state").await?,
+        ),
+        _ => None,
     })
 }
 
@@ -120,6 +138,7 @@ pub async fn diagnosticar(pool: &SqlitePool) -> Result<Diagnosis, sqlx::Error> {
             state: DatabaseState::SemHistorico,
             divergentes: vec![],
             ausentes: vec![],
+            sem_efeito: vec![],
             colunas_de_transacao_presentes: false,
         });
     }
@@ -138,15 +157,22 @@ pub async fn diagnosticar(pool: &SqlitePool) -> Result<Diagnosis, sqlx::Error> {
 
     let mut divergentes = vec![];
     let mut ausentes = vec![];
+    let mut sem_efeito = vec![];
     for (versao, esperado) in checksums_esperados() {
-        match aplicadas.iter().find(|(v, _)| *v == versao) {
+        let registro = aplicadas.iter().find(|(v, _)| *v == versao);
+        let evidencia = efeito_presente(pool, versao).await?;
+        match registro {
             Some((_, registrado)) if *registrado != esperado => divergentes.push(versao),
+            // Registrada e com o efeito provadamente fora do schema: o carimbo
+            // esta mentindo. Sem isto o app abre e so quebra na consulta que
+            // usa a coluna que nunca foi criada.
+            Some(_) if evidencia == Some(false) => sem_efeito.push(versao),
             Some(_) => {}
             // Faltar no historico so e problema se o efeito JA estiver no banco
             // -- ai o migrator tentaria aplicar de novo e falharia. Se o efeito
             // nao esta la, isto e simplesmente uma migracao pendente, e o
             // proprio sqlx aplica na proxima abertura. Nao e caso de reparo.
-            None if efeito_presente(pool, versao).await? => ausentes.push(versao),
+            None if evidencia == Some(true) => ausentes.push(versao),
             None => {}
         }
     }
@@ -156,20 +182,25 @@ pub async fn diagnosticar(pool: &SqlitePool) -> Result<Diagnosis, sqlx::Error> {
         && tem_coluna(pool, "expenses", "status").await?
         && tem_coluna(pool, "categories", "nature").await?;
 
-    let state = if divergentes.is_empty() && ausentes.is_empty() {
+    // Carimbar exige a evidencia das colunas da v3; reaplicar nao, porque so
+    // entra em `sem_efeito` o que o schema ja provou estar faltando.
+    let carimbo_sem_evidencia = (!divergentes.is_empty() || !ausentes.is_empty()) && !colunas;
+
+    let state = if divergentes.is_empty() && ausentes.is_empty() && sem_efeito.is_empty() {
         DatabaseState::Ok
-    } else if colunas {
-        // O schema comprova que o efeito das migracoes ja esta no banco:
-        // carimbar o historico e seguro e preserva os dados.
-        DatabaseState::Reparavel
-    } else {
+    } else if carimbo_sem_evidencia {
         DatabaseState::Incerto
+    } else {
+        // O schema comprova o que aconteceu: carimbar o historico (ou reaplicar
+        // a migracao ausente) e seguro e preserva os dados.
+        DatabaseState::Reparavel
     };
 
     Ok(Diagnosis {
         state,
         divergentes,
         ausentes,
+        sem_efeito,
         colunas_de_transacao_presentes: colunas,
     })
 }
@@ -214,11 +245,58 @@ pub async fn reparar(pool: &SqlitePool, backup: String) -> Result<RepairOutcome,
         }
     }
 
+    let reaplicadas = reaplicar(pool, &diagnostico.sem_efeito).await?;
+
     Ok(RepairOutcome {
         backup,
         corrigidas,
         carimbadas,
+        reaplicadas,
     })
+}
+
+/// Roda de novo o SQL das migracoes carimbadas sem efeito.
+///
+/// Nao mexe no `_sqlx_migrations`: o carimbo ja esta la e o checksum confere --
+/// o que faltava era o schema. Depois de rodar, confere a evidencia de novo;
+/// se ainda faltar, aborta em vez de reportar sucesso, porque um reparo que
+/// mente e pior do que o erro original.
+async fn reaplicar(pool: &SqlitePool, versoes: &[i64]) -> Result<Vec<i64>, sqlx::Error> {
+    let mut reaplicadas = vec![];
+    for versao in versoes {
+        let Some(migracao) = migrations()
+            .into_iter()
+            .find(|m| m.version as i64 == *versao)
+        else {
+            continue;
+        };
+        // O erro e ignorado de proposito: quem decide se deu certo e a
+        // evidencia no schema, nao o retorno do banco.
+        let _ = pool.execute(migracao.sql).await;
+
+        // Migracao aplicada pela metade (uma das tres colunas da v3 ja existe):
+        // o lote inteiro morre no primeiro `duplicate column name` e os
+        // comandos seguintes nunca rodam. Aqui vao um a um, tolerando os que
+        // ja estavam feitos. O `BEGIN` protege o caso em que o SQL tem trigger:
+        // ali o `;` nao separa comandos, e partir seria quebrar.
+        if efeito_presente(pool, *versao).await? != Some(true)
+            && !migracao.sql.to_uppercase().contains("BEGIN")
+        {
+            for comando in migracao.sql.split(';') {
+                if !comando.trim().is_empty() {
+                    let _ = pool.execute(comando).await;
+                }
+            }
+        }
+
+        if efeito_presente(pool, *versao).await? != Some(true) {
+            return Err(sqlx::Error::Protocol(format!(
+                "migracao v{versao} reaplicada mas o efeito continua ausente"
+            )));
+        }
+        reaplicadas.push(*versao);
+    }
+    Ok(reaplicadas)
 }
 
 pub(crate) fn caminho_do_banco(app: &AppHandle) -> Result<PathBuf, String> {
@@ -237,6 +315,44 @@ pub(crate) async fn abrir(app: &AppHandle) -> Result<SqlitePool, String> {
     SqlitePool::connect(&format!("sqlite:{caminho}"))
         .await
         .map_err(|_| ERRO_GENERICO.to_string())
+}
+
+/// Cura o carimbo mentiroso antes de a webview abrir.
+///
+/// Este dano nao impede o app de abrir -- e por isso a tela de reparo nunca
+/// aparece para quem sofre dele. O usuario so descobre meses depois, no meio de
+/// uma importacao, com uma mensagem crua do SQLite. Nao ha decisao a tomar: o
+/// schema prova o que falta e reaplicar so acrescenta coluna e indice, sem
+/// tocar em dado. Entao curamos sozinhos, com backup antes.
+///
+/// Falha em silencio de proposito. Se o reparo nao der certo, o app continua
+/// abrindo como antes -- e melhor um erro na importacao do que um app que nao
+/// abre por causa da tentativa de conserto.
+pub(crate) fn curar_carimbo_sem_efeito(app: &AppHandle) {
+    let Ok(origem) = caminho_do_banco(app) else {
+        return;
+    };
+    if !origem.exists() {
+        return;
+    }
+
+    let app = app.clone();
+    tauri::async_runtime::block_on(async move {
+        let Ok(pool) = abrir(&app).await else {
+            return;
+        };
+        let Ok(diagnostico) = diagnosticar(&pool).await else {
+            return;
+        };
+        if diagnostico.sem_efeito.is_empty() {
+            return;
+        }
+        if std::fs::copy(&origem, origem.with_extension("db.bak")).is_err() {
+            return;
+        }
+        let _ = reaplicar(&pool, &diagnostico.sem_efeito).await;
+        pool.close().await;
+    });
 }
 
 #[tauri::command]
@@ -275,10 +391,31 @@ pub async fn repair_database(app: AppHandle) -> Result<RepairOutcome, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sqlx::{sqlite::SqlitePoolOptions, Executor};
+    use sqlx::sqlite::SqlitePoolOptions;
 
-    /// Schema base equivalente ao efeito das migracoes v1 + v3.
+    /// Schema base equivalente ao efeito das migracoes v1 + v3 + v4 -- as que
+    /// estes cenarios registram como aplicadas no `_sqlx_migrations`.
     const SCHEMA_COM_COLUNAS: &str = r#"
+        CREATE TABLE categories (id TEXT PRIMARY KEY NOT NULL, nature TEXT NOT NULL DEFAULT 'saida');
+        CREATE TABLE expenses (
+            id TEXT PRIMARY KEY NOT NULL,
+            nature TEXT NOT NULL DEFAULT 'saida',
+            status TEXT NOT NULL DEFAULT 'realizado',
+            import_fingerprint TEXT
+        );
+        CREATE TABLE _sqlx_migrations (
+            version BIGINT PRIMARY KEY,
+            description TEXT NOT NULL,
+            installed_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            success BOOLEAN NOT NULL,
+            checksum BLOB NOT NULL,
+            execution_time BIGINT NOT NULL
+        );
+    "#;
+
+    /// O aparelho danificado: as colunas da v3 estao la, a da v4 nao -- ainda
+    /// que o historico jure que a v4 rodou.
+    const SCHEMA_SEM_A_COLUNA_DA_V4: &str = r#"
         CREATE TABLE categories (id TEXT PRIMARY KEY NOT NULL, nature TEXT NOT NULL DEFAULT 'saida');
         CREATE TABLE expenses (
             id TEXT PRIMARY KEY NOT NULL,
@@ -325,7 +462,21 @@ mod tests {
     #[tokio::test]
     async fn banco_integro_e_reportado_como_ok() {
         let pool = pool_vazio().await;
-        pool.execute(SCHEMA_COM_COLUNAS).await.expect("schema");
+        for m in migrations() {
+            pool.execute(m.sql).await.expect("aplicar migracao");
+        }
+        pool.execute(
+            r#"CREATE TABLE _sqlx_migrations (
+                version BIGINT PRIMARY KEY,
+                description TEXT NOT NULL,
+                installed_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                success BOOLEAN NOT NULL,
+                checksum BLOB NOT NULL,
+                execution_time BIGINT NOT NULL
+            );"#,
+        )
+        .await
+        .expect("historico");
         for (versao, checksum) in checksums_esperados() {
             registrar(&pool, versao, checksum).await;
         }
@@ -436,6 +587,87 @@ mod tests {
         assert!(v5.is_none(), "a v5 nao pode ser carimbada sem a tabela existir");
     }
 
+    /// O dano que o reparo da fase 12 deixou em campo: a v4 foi carimbada como
+    /// aplicada sem o ALTER ter rodado. O sqlx nunca mais a aplica, o app abre
+    /// normal e so quebra na importacao, em "no such column: import_fingerprint".
+    #[tokio::test]
+    async fn carimbo_sem_efeito_e_reparado_reaplicando_a_migracao() {
+        let pool = pool_vazio().await;
+        pool.execute(SCHEMA_SEM_A_COLUNA_DA_V4)
+            .await
+            .expect("schema sem a coluna da v4");
+        for (versao, checksum) in checksums_esperados() {
+            registrar(&pool, versao, checksum).await;
+        }
+
+        let d = diagnosticar(&pool).await.expect("diagnostico");
+        assert_eq!(d.state, DatabaseState::Reparavel);
+        assert!(d.divergentes.is_empty());
+        assert!(d.ausentes.is_empty());
+        // v4 (coluna) e v5 (tabelas da nuvem) estao carimbadas sem efeito.
+        assert_eq!(d.sem_efeito, vec![4, 5]);
+
+        let r = reparar(&pool, "backup.db".to_string())
+            .await
+            .expect("reparo");
+        assert_eq!(r.reaplicadas, vec![4, 5]);
+        assert!(tem_coluna(&pool, "expenses", "import_fingerprint")
+            .await
+            .expect("coluna"));
+
+        let depois = diagnosticar(&pool).await.expect("diagnostico pos-reparo");
+        assert_eq!(depois.state, DatabaseState::Ok);
+    }
+
+    /// Migracao aplicada pela metade: a coluna existe, o resto nao. O primeiro
+    /// comando do lote falha, e so a evidencia final decide se deu certo.
+    #[tokio::test]
+    async fn reaplicar_atravessa_migracao_aplicada_pela_metade() {
+        let pool = pool_vazio().await;
+        // `nature` em expenses ja existe; `status` e o `nature` de categories
+        // nao. Reaplicar a v3 inteira morre no primeiro ALTER.
+        pool.execute(
+            r#"
+            CREATE TABLE categories (id TEXT PRIMARY KEY NOT NULL);
+            CREATE TABLE expenses (
+                id TEXT PRIMARY KEY NOT NULL,
+                nature TEXT NOT NULL DEFAULT 'saida',
+                import_fingerprint TEXT
+            );
+            CREATE TABLE _sqlx_migrations (
+                version BIGINT PRIMARY KEY,
+                description TEXT NOT NULL,
+                installed_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                success BOOLEAN NOT NULL,
+                checksum BLOB NOT NULL,
+                execution_time BIGINT NOT NULL
+            );
+        "#,
+        )
+        .await
+        .expect("schema pela metade");
+        for (versao, checksum) in checksums_esperados() {
+            registrar(&pool, versao, checksum).await;
+        }
+
+        let d = diagnosticar(&pool).await.expect("diagnostico");
+        assert_eq!(d.sem_efeito, vec![3, 5]);
+
+        let r = reparar(&pool, "backup.db".to_string())
+            .await
+            .expect("reparo");
+        assert_eq!(r.reaplicadas, vec![3, 5]);
+        assert!(tem_coluna(&pool, "expenses", "status")
+            .await
+            .expect("status"));
+        assert!(tem_coluna(&pool, "categories", "nature")
+            .await
+            .expect("nature"));
+        assert!(tabela_existe(&pool, "cloud_backup_state")
+            .await
+            .expect("tabela"));
+    }
+
     #[tokio::test]
     async fn toda_migracao_do_codigo_tem_evidencia_declarada() {
         // Aplica o SQL real de todas as migracoes e cobra que cada uma saiba se
@@ -451,8 +683,11 @@ mod tests {
             if versao <= 2 {
                 continue; // v1 e v2 criam o schema base; nao ha o que carimbar
             }
-            assert!(
-                super::efeito_presente(&pool, versao).await.expect("evidencia"),
+            assert_eq!(
+                super::efeito_presente(&pool, versao)
+                    .await
+                    .expect("evidencia"),
+                Some(true),
                 "migracao v{versao} sem evidencia declarada em efeito_presente"
             );
         }

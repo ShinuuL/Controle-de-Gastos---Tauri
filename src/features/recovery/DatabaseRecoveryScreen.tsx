@@ -8,6 +8,7 @@ interface RepairOutcome {
   backup: string;
   corrigidas: number[];
   carimbadas: number[];
+  reaplicadas: number[];
 }
 
 type Estado =

@@ -24,6 +24,8 @@ pub fn run() {
         // em que trocar o arquivo do banco e seguro.
         .setup(|app| {
             cloud::aplicar_restauracao_pendente(app.handle());
+            // Depois da restauracao: o banco que vale e o que acabou de entrar.
+            recovery::curar_carimbo_sem_efeito(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
