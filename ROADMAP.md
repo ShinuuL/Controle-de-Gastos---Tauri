@@ -1,6 +1,6 @@
 # Roadmap — Controle de Gastos
 
-**Status geral:** Fase 11/17 (nuvem) com os 6 passos da spec entregues no lado do app e a infraestrutura no ar (conferida em 2026-09-01; ver [`docs/deploy-do-gateway.md`](docs/deploy-do-gateway.md)). **Fase 21 (atualização pelo app) com o código entregue em 2026-09-01** — manifesto assinado verificado no aparelho, sha256 conferido antes de instalar e entrega ao instalador do sistema. O que separa as duas de "concluídas" é a mesma coisa: **validação em aparelho real** — e a **0.5.2, publicada em 2026-09-01, é o veículo dessa validação**: ela corrige o banco que quebrava a importação de extrato e, por ser maior que a 0.5.1 instalada, é a primeira release que os aparelhos podem enxergar pela faixa de atualização. A venda vem depois: **17 (nuvem) → 21 (atualização) → 14 (Stripe) → 20 (trial e premium)**.
+**Status geral:** Fase 11/17 (nuvem) com os 6 passos da spec entregues no lado do app e a infraestrutura no ar (conferida em 2026-09-01; ver [`docs/deploy-do-gateway.md`](docs/deploy-do-gateway.md)). **Fase 21 (atualização pelo app): a faixa foi vista em aparelho real em 2026-09-01** — a 0.5.2 instalada enxergou a 0.5.3 publicada na primeira abertura. Falta o trecho que exige o dedo (permissão do Android, download, instalador). A nuvem segue sem validação de ponta a ponta em aparelho. A venda vem depois: **17 (nuvem) → 21 (atualização) → 14 (Stripe) → 20 (trial e premium)**. A venda vem depois: **17 (nuvem) → 21 (atualização) → 14 (Stripe) → 20 (trial e premium)**.
 
 ---
 
@@ -22,19 +22,35 @@ bloqueia mais.
    carimbada como aplicada sem o `ALTER TABLE` nunca ter rodado — dano do
    próprio reparo da fase 12. O CSV foi conferido contra o PDF do mesmo período
    e bate exato (82 linhas, entradas 4.407,47, saídas 4.409,54, saldo 0,45).
-   **Falta confirmar no aparelho** que a cura automática roda e a importação
-   passa.
+   **A cura automática segue sem prova de campo, e por um bom motivo:** o
+   aparelho afetado foi zerado em 2026-09-01 (a pedido, via desinstalar e
+   reinstalar, já que a MIUI recusa `pm clear`). Banco novo nasce com as seis
+   migrações aplicadas de verdade, então o carimbo mentiroso que a cura conserta
+   não existe mais ali. O bug foi embora do aparelho; o código que o cura só
+   será exercitado se aparecer outro aparelho na mesma situação.
 3. **Fundo do tema no celular** e o color picker e o botão voltar da fase 19,
    que nunca foram confirmados em aparelho real.
 4. **Um PDF de extrato do Nubank** para conferir o parser genérico com arquivo
    de verdade (fase 19). O arquivo já existe em `extrato/` desde 2026-09-01;
    até agora só serviu para validar o CSV, não para exercitar o parser de PDF.
 5. **Atualização pelo app (fase 21):** ~~publicar uma versão maior que a
-   instalada~~ — **a 0.5.2 está publicada** (2026-09-01), acima da 0.5.1 que
-   está nos aparelhos. Falta a outra metade, que só o aparelho responde:
-   conferir a faixa, a tela de permissão do Android e o instalador abrindo.
-   Esta release serve às duas coisas de uma vez — ela é o teste da atualização
-   **e** o remédio do banco.
+   instalada~~ ~~conferir a faixa~~ — **a faixa foi confirmada em aparelho real
+   em 2026-09-01** (Redmi 24117RN76L, Android 16): com a 0.5.2 instalada e a
+   0.5.3 publicada, a faixa "Versão 0.5.3 disponível — São 86 MB" apareceu na
+   primeira abertura, com o botão de baixar. Boot limpo, sem panic nem erro de
+   SQLite no logcat.
+
+   **Falta o que exige o dedo:** a tela de permissão do Android, o download e o
+   instalador abrindo. A MIUI recusa `input tap` e `pm clear` via adb
+   (`SecurityException: INJECT_EVENTS` / `CLEAR_APP_USER_DATA`), então o resto
+   não se automatiza daqui. Para automatizar, ligar **Depuração USB
+   (Configurações de segurança)** nas opções de desenvolvedor.
+
+   **Por que a faixa não aparecia antes:** o aparelho gastou a checagem do dia
+   quando a 0.5.2 ainda não existia. A checagem é uma por dia **e** só no cold
+   start, e todo desfecho que não seja "há versão nova" era silêncio absoluto —
+   `cedo`, `em_dia`, `indisponivel` davam a mesma tela em branco. A 0.5.3 dá um
+   botão de verificar na hora, que responde em português.
 
 **Fora do código:**
 
