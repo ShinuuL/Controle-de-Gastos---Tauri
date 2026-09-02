@@ -1,5 +1,11 @@
 # Roadmap — Controle de Gastos
 
+> **Incidente 2026-09-01:** a 0.5.3 ficou algumas horas no ar impedindo o app
+> de abrir em aparelhos com o histórico de migrações divergente — e sem
+> oferecer o botão de reparo, porque o erro que chegava à tela era de segunda
+> ordem (`no such table: app_meta`). A 0.5.4 corrigiu. Detalhes em
+> [`docs/release-0.5.4.md`](docs/release-0.5.4.md).
+
 **Status geral:** Fase 11/17 (nuvem) com os 6 passos da spec entregues no lado do app e a infraestrutura no ar (conferida em 2026-09-01; ver [`docs/deploy-do-gateway.md`](docs/deploy-do-gateway.md)). **Fase 21 (atualização pelo app): a faixa foi vista em aparelho real em 2026-09-01** — a 0.5.2 instalada enxergou a 0.5.3 publicada na primeira abertura. Falta o trecho que exige o dedo (permissão do Android, download, instalador). A nuvem segue sem validação de ponta a ponta em aparelho. A venda vem depois: **17 (nuvem) → 21 (atualização) → 14 (Stripe) → 20 (trial e premium)**. A venda vem depois: **17 (nuvem) → 21 (atualização) → 14 (Stripe) → 20 (trial e premium)**.
 
 ---
@@ -15,19 +21,30 @@ bloqueia mais.
    reinstalar, entrar, restaurar e conferir que os lançamentos batem. Depois:
    modo avião com conta cadastrada, e apagar uma conta de teste conferindo o
    `conta_apagada` na trilha de auditoria do D1.
-2. ~~**Importar o CSV do Nubank que falhou**~~ — **causa encontrada em
-   2026-09-01, corrigida na 0.5.2.** A mensagem que a 0.5.1 passou a mostrar
-   entregou a frase inteira: `no such column: e.import_fingerprint`. Não era o
-   extrato nem a consulta: era o banco daquele aparelho, com a migração v4
-   carimbada como aplicada sem o `ALTER TABLE` nunca ter rodado — dano do
-   próprio reparo da fase 12. O CSV foi conferido contra o PDF do mesmo período
-   e bate exato (82 linhas, entradas 4.407,47, saídas 4.409,54, saldo 0,45).
-   **A cura automática segue sem prova de campo, e por um bom motivo:** o
-   aparelho afetado foi zerado em 2026-09-01 (a pedido, via desinstalar e
-   reinstalar, já que a MIUI recusa `pm clear`). Banco novo nasce com as seis
-   migrações aplicadas de verdade, então o carimbo mentiroso que a cura conserta
-   não existe mais ali. O bug foi embora do aparelho; o código que o cura só
-   será exercitado se aparecer outro aparelho na mesma situação.
+2. ~~**Importar o CSV do Nubank que falhou**~~ — **RESOLVIDO em aparelho real
+   em 2026-09-01, na 0.5.4.** O extrato importou. O CSV também foi conferido
+   contra o PDF do mesmo período e bate exato (82 linhas, entradas 4.407,47,
+   saídas 4.409,54, saldo 0,45) — o arquivo nunca foi o problema.
+
+   **A causa não é a que a 0.5.2 anunciou.** Aquela versão dizia que a v4 tinha
+   sido carimbada como aplicada sem rodar, e trouxe uma cura automática para
+   isso. A causa real é outra: o histórico do banco estava **divergente**, o
+   sqlx aborta a execução INTEIRA quando um checksum não confere, e por isso
+   **nenhuma** migração rodava naquele aparelho.
+
+   O que escondia isso por semanas era o `db.ts`: quando a abertura falhava, ele
+   tentava de novo — e o comando `load` do tauri-plugin-sql **consome** a lista
+   de migrações na primeira chamada, então a segunda abria o banco sem migrar
+   nada e dava certo. O app subia normal, a tela de reparo nunca aparecia, e o
+   erro só surgia muito depois, numa consulta a uma coluna que a migração
+   pendente teria criado.
+
+   **Lição:** um erro de segunda ordem chegando à tela custou uma release
+   inteira apontando para o mecanismo errado. A 0.5.4 repete a primeira falha em
+   vez de tentar de novo, e foi isso que fez a causa aparecer.
+
+   **A cura automática da 0.5.2 (carimbo sem efeito) segue sem prova de campo.**
+   Ela trata um caso que este aparelho não tinha.
 3. **Fundo do tema no celular** e o color picker e o botão voltar da fase 19,
    que nunca foram confirmados em aparelho real.
 4. **Um PDF de extrato do Nubank** para conferir o parser genérico com arquivo
