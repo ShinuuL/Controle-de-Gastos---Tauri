@@ -342,18 +342,28 @@ pub(crate) fn curar_carimbo_sem_efeito(app: &AppHandle) {
         let Ok(pool) = abrir(&app).await else {
             return;
         };
-        let Ok(diagnostico) = diagnosticar(&pool).await else {
-            return;
-        };
-        if diagnostico.sem_efeito.is_empty() {
-            return;
-        }
-        if std::fs::copy(&origem, origem.with_extension("db.bak")).is_err() {
-            return;
-        }
-        let _ = reaplicar(&pool, &diagnostico.sem_efeito).await;
+        // O `close` fica FORA de qualquer caminho de saida antecipada. Este
+        // pool abre o mesmo arquivo que o plugin-sql vai abrir logo em seguida
+        // para rodar as migracoes pendentes -- e conexao viva aqui e `database
+        // is locked` la, num ponto onde o erro nao tem como ser explicado. Um
+        // `return` no meio da funcao anterior largava o pool para o Drop, que
+        // e assincrono e dentro de um `block_on` pode simplesmente nao rodar.
+        curar(&pool, &origem).await;
         pool.close().await;
     });
+}
+
+async fn curar(pool: &SqlitePool, origem: &std::path::Path) {
+    let Ok(diagnostico) = diagnosticar(pool).await else {
+        return;
+    };
+    if diagnostico.sem_efeito.is_empty() {
+        return;
+    }
+    if std::fs::copy(origem, origem.with_extension("db.bak")).is_err() {
+        return;
+    }
+    let _ = reaplicar(pool, &diagnostico.sem_efeito).await;
 }
 
 #[tauri::command]

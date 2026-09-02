@@ -50,7 +50,15 @@ describe("createDbGetter", () => {
     expect(calls).toEqual({ load: 1, pragma: 1, seed: 1 });
   });
 
-  it("clears a failed initialization so the next caller can retry", async () => {
+  /**
+   * Este teste já cobrou o contrário -- que a segunda chamada tentasse de novo.
+   * A tentativa parecia inofensiva e não era: o `load` do plugin-sql consome a
+   * lista de migrações na primeira chamada, então a segunda abre o banco **sem
+   * migrar**. Ela costuma até "dar certo", e quebra depois, numa consulta a uma
+   * tabela que a migração pendente criaria -- e é esse erro de segunda ordem
+   * que chega à tela do usuário, no lugar da falha real.
+   */
+  it("repete a primeira falha em vez de reabrir sem migrar", async () => {
     const database: FakeDatabase = {
       execute: async () => ({ rowsAffected: 0 }),
     };
@@ -58,14 +66,14 @@ describe("createDbGetter", () => {
     const getDb = createDbGetter({
       load: async () => {
         attempts += 1;
-        if (attempts === 1) throw new Error("load failed");
+        if (attempts === 1) throw new Error("migração v6 falhou");
         return database;
       },
       seed: async () => undefined,
     });
 
-    await expect(getDb()).rejects.toThrow("load failed");
-    await expect(getDb()).resolves.toBe(database);
-    expect(attempts).toBe(2);
+    await expect(getDb()).rejects.toThrow("migração v6 falhou");
+    await expect(getDb()).rejects.toThrow("migração v6 falhou");
+    expect(attempts).toBe(1);
   });
 });
