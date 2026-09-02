@@ -12,11 +12,19 @@ import AccountModal from "../../features/auth/AccountModal";
 import { sessaoAtual, type Sessao } from "../../features/auth/authClient";
 import { useBackupAutomatico } from "../../lib/cloud/useBackupAutomatico";
 import UpdateBanner from "../../features/update/UpdateBanner";
+import {
+  verificarAtualizacao,
+  type EstadoAtualizacao,
+} from "../../features/update/updateClient";
 
 export default function AppShell() {
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [contaAberta, setContaAberta] = useState(false);
   const [sessao, setSessao] = useState<Sessao | null>(null);
+  // Resultado da checagem que o usuário pede na janela da conta. Mora aqui
+  // porque quem pergunta (a janela) e quem mostra a oferta (a faixa) são
+  // vizinhos, não parentes -- e a rede só precisa ser consultada uma vez.
+  const [checagemManual, setChecagemManual] = useState<EstadoAtualizacao | null>(null);
 
   // A sessao sobrevive ao fechamento do app (session_store.rs), entao isto
   // devolve quem ja estava conectado.
@@ -40,6 +48,12 @@ export default function AppShell() {
   useBackGuard(activeTab !== "dashboard", () => setActiveTab("dashboard"));
 
   useBackupAutomatico(sessao !== null);
+
+  async function verificarAgora(): Promise<EstadoAtualizacao> {
+    const novo = await verificarAtualizacao(true);
+    setChecagemManual(novo);
+    return novo;
+  }
 
   const screen =
     activeTab === "dashboard" ? (
@@ -75,7 +89,7 @@ export default function AppShell() {
       <main className="min-w-0 flex-1 pb-20 md:pb-0">
         {/* Acima do conteudo e abaixo da navegacao: e um aviso, nao uma tela.
             Some sozinho quando nao ha versao nova. */}
-        <UpdateBanner />
+        <UpdateBanner estadoExterno={checagemManual} />
         {screen}
       </main>
       <BottomNav active={activeTab} onSelect={setActiveTab} />
@@ -84,6 +98,7 @@ export default function AppShell() {
         onClose={() => setContaAberta(false)}
         sessao={sessao}
         onSessao={setSessao}
+        onVerificarAtualizacao={verificarAgora}
       />
     </div>
   );

@@ -19,6 +19,8 @@ import {
   type Sessao,
 } from "./authClient";
 import { enviarBackup, restaurarBackup } from "../../lib/cloud/sync";
+import type { EstadoAtualizacao } from "../update/updateClient";
+import { mensagemDaChecagem } from "../update/updatePolicy";
 
 /** Aviso curto sobre a ultima operacao de backup. */
 interface AvisoBackup {
@@ -31,6 +33,8 @@ interface AccountModalProps {
   onClose: () => void;
   sessao: Sessao | null;
   onSessao: (sessao: Sessao | null) => void;
+  /** Checagem de atualização pedida à mão. Devolve o estado já resolvido. */
+  onVerificarAtualizacao: () => Promise<EstadoAtualizacao>;
 }
 
 const inputClass =
@@ -45,7 +49,13 @@ const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
  * acesso nao pode virar uma segunda camada de telas -- o app abre e funciona
  * sem conta, e quem nunca cadastrar nunca ve isto.
  */
-export default function AccountModal({ open, onClose, sessao, onSessao }: AccountModalProps) {
+export default function AccountModal({
+  open,
+  onClose,
+  sessao,
+  onSessao,
+  onVerificarAtualizacao,
+}: AccountModalProps) {
   const [modo, setModo] = useState<ModoConta>("entrar");
   const [campos, setCampos] = useState<CamposConta>(camposVazios());
   const [erro, setErro] = useState<string | null>(null);
@@ -53,6 +63,8 @@ export default function AccountModal({ open, onClose, sessao, onSessao }: Accoun
   const [backup, setBackup] = useState<AvisoBackup | null>(null);
   const [exclusao, setExclusao] = useState(false);
   const [confirmacao, setConfirmacao] = useState("");
+  const [checando, setChecando] = useState(false);
+  const [avisoUpdate, setAvisoUpdate] = useState<string | null>(null);
   const ocupado = enviando;
 
   const altera = <K extends keyof CamposConta>(chave: K, valor: CamposConta[K]) => {
@@ -157,6 +169,21 @@ export default function AccountModal({ open, onClose, sessao, onSessao }: Accoun
       setErro(mensagemDoErro(falha));
     } finally {
       setEnviando(false);
+    }
+  }
+
+  async function verificarAtualizacaoAgora() {
+    setChecando(true);
+    setAvisoUpdate(null);
+    try {
+      setAvisoUpdate(mensagemDaChecagem(await onVerificarAtualizacao()));
+    } catch {
+      // A checagem do Rust não rejeita por rede -- ela devolve `indisponivel`.
+      // Cair aqui é o comando não ter respondido, e ficar mudo seria repetir o
+      // problema que este botão existe para resolver.
+      setAvisoUpdate("Não foi possível verificar agora. Tente de novo.");
+    } finally {
+      setChecando(false);
     }
   }
 
@@ -384,6 +411,32 @@ export default function AccountModal({ open, onClose, sessao, onSessao }: Accoun
           </Button>
         </form>
       )}
+
+      {/* Fora do if/else de propósito: a maior parte das pessoas nunca cria
+          conta, e a atualização é de todo mundo. Esta janela é a única
+          superfície de ajustes do app -- é aqui ou em lugar nenhum. */}
+      <div className="flex flex-col gap-2 border-t border-border p-4">
+        <p className="text-sm font-medium text-foreground">Atualização</p>
+        <p className="text-sm text-muted-foreground">
+          O app pergunta por versão nova no máximo uma vez por dia, ao abrir. Aqui
+          você pergunta na hora.
+        </p>
+
+        {avisoUpdate && (
+          <p role="status" className="text-sm text-muted-foreground">
+            {avisoUpdate}
+          </p>
+        )}
+
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={verificarAtualizacaoAgora}
+          disabled={checando}
+        >
+          {checando ? "Verificando…" : "Verificar atualização"}
+        </Button>
+      </div>
     </Modal>
   );
 }

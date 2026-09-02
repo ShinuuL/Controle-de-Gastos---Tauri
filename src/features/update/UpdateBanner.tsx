@@ -35,7 +35,16 @@ import {
  * de gastar dado, baixar mostrando o tamanho, e entregar ao instalador do
  * Android. Quem confirma a instalação é o usuário, numa tela do sistema.
  */
-export default function UpdateBanner() {
+export default function UpdateBanner({
+  estadoExterno = null,
+}: {
+  /**
+   * Resultado de uma checagem que o usuário pediu em outro lugar da tela (a
+   * janela da conta). Chega pronto para a faixa não repetir a ida à rede que
+   * acabou de acontecer.
+   */
+  estadoExterno?: EstadoAtualizacao | null;
+}) {
   const [estado, setEstado] = useState<EstadoAtualizacao | null>(null);
   const [passo, setPasso] = useState<PassoAtualizacao>("oculto");
   const [progresso, setProgresso] = useState({ baixados: 0, total: 0 });
@@ -57,6 +66,15 @@ export default function UpdateBanner() {
       cancelado = true;
     };
   }, []);
+
+  // Checagem pedida à mão: adota o resultado e reabre a oferta, inclusive
+  // depois de a pessoa ter dispensado esta versão -- pedir de novo é revogar o
+  // "agora não".
+  useEffect(() => {
+    if (!estadoExterno) return;
+    setEstado(estadoExterno);
+    setPasso(deveOferecer(estadoExterno) ? "oferta" : "oculto");
+  }, [estadoExterno]);
 
   async function aceitar() {
     setErro(null);

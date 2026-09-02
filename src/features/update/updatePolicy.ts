@@ -73,3 +73,31 @@ export function percentual(baixados: number, total: number): number {
   if (!Number.isFinite(total) || total <= 0) return 0;
   return Math.max(0, Math.min(100, Math.round((baixados / total) * 100)));
 }
+
+/**
+ * O que dizer depois de uma checagem que o usuário pediu.
+ *
+ * A checagem automática é silenciosa de propósito -- um app que funciona
+ * offline não abre com aviso de que falhou em perguntar algo. Mas silêncio é a
+ * resposta errada para quem apertou um botão: sem texto, "sem rede", "já está
+ * atualizado" e "o botão não fez nada" ficam idênticos, e foi assim que a
+ * ausência da faixa virou um mistério de horas.
+ */
+export function mensagemDaChecagem(estado: EstadoAtualizacao): string {
+  switch (estado.kind) {
+    case "disponivel":
+      return `Versão ${estado.versao} disponível. Feche esta janela para baixar.`;
+    case "em_dia":
+      return `Você já está na versão mais recente (${estado.versao}).`;
+    case "dispensada":
+      // Forçar a checagem limpa a dispensa no Rust, então isto é um caminho que
+      // a checagem manual não alcança. Fica pelo exaustivo do switch.
+      return `A versão ${estado.versao} foi dispensada.`;
+    case "cedo":
+      // `forcar` pula a janela do dia, então isto também não deveria chegar
+      // aqui -- mas dizer "aguarde" é melhor do que não dizer nada.
+      return "A verificação de hoje já foi feita.";
+    case "indisponivel":
+      return estado.motivo;
+  }
+}

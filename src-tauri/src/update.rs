@@ -350,6 +350,20 @@ pub fn deve_checar(estado: &EstadoLocal, agora: u64, forcar: bool) -> Result<(),
     }
 }
 
+/// A dispensa ainda vale nesta checagem?
+///
+/// Uma checagem pedida a mao revoga o "agora nao" anterior: quem aperta
+/// "verificar atualizacao" esta dizendo que quer saber agora, e responder "voce
+/// ja dispensou essa versao" seria obedecer a uma ordem que a propria pessoa
+/// acabou de cancelar -- com o agravante de o app nao ter como explicar isso.
+pub fn dispensa_em_vigor<'a>(forcar: bool, dispensada: Option<&'a str>) -> Option<&'a str> {
+    if forcar {
+        None
+    } else {
+        dispensada
+    }
+}
+
 /// Compara o manifesto verificado com o que esta instalado e diz o que fazer.
 ///
 /// Recebe tudo por parametro -- inclusive a versao instalada e a versao
@@ -438,7 +452,8 @@ pub async fn atualizacao_verificar(
     gravar_estado(&app, &estado);
 
     let instalada = app.package_info().version.to_string();
-    Ok(decidir(&manifesto, &instalada, estado.versao_dispensada.as_deref()))
+    let dispensada = dispensa_em_vigor(forcar, estado.versao_dispensada.as_deref());
+    Ok(decidir(&manifesto, &instalada, dispensada))
 }
 
 /// Para de oferecer esta versao. A proxima volta a aparecer.
@@ -658,6 +673,15 @@ mod tests {
         assert!(!mais_nova("nao-e-versao", "0.5.0"));
         assert!(!mais_nova("0.6.0", "sei-la"));
         assert!(!mais_nova("0.5", "0.4.0"));
+    }
+
+    /// Regressao de produto: a pessoa dispensa a versao, alguem publica um
+    /// conserto, ela aperta "verificar" -- e o app respondia "dispensada",
+    /// escondendo justamente a versao que ela foi buscar.
+    #[test]
+    fn checagem_pedida_a_mao_revoga_a_dispensa() {
+        assert_eq!(dispensa_em_vigor(false, Some("0.5.2")), Some("0.5.2"));
+        assert_eq!(dispensa_em_vigor(true, Some("0.5.2")), None);
     }
 
     #[test]

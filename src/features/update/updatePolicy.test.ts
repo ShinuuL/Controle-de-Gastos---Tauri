@@ -6,6 +6,7 @@ import {
   percentual,
   podeDispensar,
   rotuloDoDownload,
+  mensagemDaChecagem,
 } from "./updatePolicy";
 import type { EstadoAtualizacao } from "./updateClient";
 
@@ -91,5 +92,51 @@ describe("percentual", () => {
     expect(percentual(150, 100)).toBe(100);
     expect(percentual(10, 0)).toBe(0);
     expect(percentual(10, Number.NaN)).toBe(0);
+  });
+});
+
+describe("mensagemDaChecagem", () => {
+  it("nomeia a versão nova e diz o que fazer em seguida", () => {
+    expect(
+      mensagemDaChecagem({
+        kind: "disponivel",
+        versao: "0.5.3",
+        notas: "",
+        bytes: 1,
+        obrigatoria: false,
+        arquivo: "contr0l-0.5.3.apk",
+      }),
+    ).toBe("Versão 0.5.3 disponível. Feche esta janela para baixar.");
+  });
+
+  /**
+   * O caso que motivou a função: sem texto, "você já está atualizado" e "o
+   * botão não fez nada" são a mesma tela.
+   */
+  it("confirma que não há nada a fazer, com a versão instalada", () => {
+    expect(mensagemDaChecagem({ kind: "em_dia", versao: "0.5.2" })).toBe(
+      "Você já está na versão mais recente (0.5.2).",
+    );
+  });
+
+  it("repassa o motivo de uma checagem que não completou", () => {
+    expect(
+      mensagemDaChecagem({
+        kind: "indisponivel",
+        motivo: "Sem conexao para verificar atualizacoes.",
+      }),
+    ).toBe("Sem conexao para verificar atualizacoes.");
+  });
+
+  it("responde alguma coisa para todo estado possível", () => {
+    const estados: EstadoAtualizacao[] = [
+      { kind: "em_dia", versao: "0.5.2" },
+      { kind: "cedo", faltam_segundos: 3600 },
+      { kind: "dispensada", versao: "0.5.3" },
+      { kind: "indisponivel", motivo: "x" },
+    ];
+    for (const estado of estados) {
+      expect(mensagemDaChecagem(estado).length).toBeGreaterThan(0);
+    }
   });
 });
