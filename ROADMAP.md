@@ -1,6 +1,6 @@
 # Roadmap — Controle de Gastos
 
-**Status geral:** Fase 11/17 (nuvem) com os 6 passos da spec entregues no lado do app e a infraestrutura no ar (conferida em 2026-09-01; ver [`docs/deploy-do-gateway.md`](docs/deploy-do-gateway.md)). **Fase 21 (atualização pelo app) com o código entregue em 2026-09-01** — manifesto assinado verificado no aparelho, sha256 conferido antes de instalar e entrega ao instalador do sistema. O que separa as duas de "concluídas" é a mesma coisa: **validação em aparelho real**. A venda vem depois: **17 (nuvem) → 21 (atualização) → 14 (Stripe) → 20 (trial e premium)**.
+**Status geral:** Fase 11/17 (nuvem) com os 6 passos da spec entregues no lado do app e a infraestrutura no ar (conferida em 2026-09-01; ver [`docs/deploy-do-gateway.md`](docs/deploy-do-gateway.md)). **Fase 21 (atualização pelo app) com o código entregue em 2026-09-01** — manifesto assinado verificado no aparelho, sha256 conferido antes de instalar e entrega ao instalador do sistema. O que separa as duas de "concluídas" é a mesma coisa: **validação em aparelho real** — e a **0.5.2, publicada em 2026-09-01, é o veículo dessa validação**: ela corrige o banco que quebrava a importação de extrato e, por ser maior que a 0.5.1 instalada, é a primeira release que os aparelhos podem enxergar pela faixa de atualização. A venda vem depois: **17 (nuvem) → 21 (atualização) → 14 (Stripe) → 20 (trial e premium)**.
 
 ---
 
@@ -15,15 +15,26 @@ bloqueia mais.
    reinstalar, entrar, restaurar e conferir que os lançamentos batem. Depois:
    modo avião com conta cadastrada, e apagar uma conta de teste conferindo o
    `conta_apagada` na trilha de auditoria do D1.
-2. **Importar o CSV do Nubank que falhou**, agora com a consulta única. Se ainda
-   falhar, a tela mostra a causa — anotar a frase inteira.
+2. ~~**Importar o CSV do Nubank que falhou**~~ — **causa encontrada em
+   2026-09-01, corrigida na 0.5.2.** A mensagem que a 0.5.1 passou a mostrar
+   entregou a frase inteira: `no such column: e.import_fingerprint`. Não era o
+   extrato nem a consulta: era o banco daquele aparelho, com a migração v4
+   carimbada como aplicada sem o `ALTER TABLE` nunca ter rodado — dano do
+   próprio reparo da fase 12. O CSV foi conferido contra o PDF do mesmo período
+   e bate exato (82 linhas, entradas 4.407,47, saídas 4.409,54, saldo 0,45).
+   **Falta confirmar no aparelho** que a cura automática roda e a importação
+   passa.
 3. **Fundo do tema no celular** e o color picker e o botão voltar da fase 19,
    que nunca foram confirmados em aparelho real.
 4. **Um PDF de extrato do Nubank** para conferir o parser genérico com arquivo
-   de verdade (fase 19).
-5. **Atualização pelo app (fase 21):** publicar uma versão maior que a instalada
-   e conferir no aparelho a faixa, a tela de permissão do Android e o instalador
-   abrindo. Só existe teste real com release publicada.
+   de verdade (fase 19). O arquivo já existe em `extrato/` desde 2026-09-01;
+   até agora só serviu para validar o CSV, não para exercitar o parser de PDF.
+5. **Atualização pelo app (fase 21):** ~~publicar uma versão maior que a
+   instalada~~ — **a 0.5.2 está publicada** (2026-09-01), acima da 0.5.1 que
+   está nos aparelhos. Falta a outra metade, que só o aparelho responde:
+   conferir a faixa, a tela de permissão do Android e o instalador abrindo.
+   Esta release serve às duas coisas de uma vez — ela é o teste da atualização
+   **e** o remédio do banco.
 
 **Fora do código:**
 
