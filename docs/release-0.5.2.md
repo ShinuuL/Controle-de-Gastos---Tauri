@@ -1,5 +1,12 @@
 ## Contr0l 0.5.2
 
+> **Correção (2026-09-01):** a explicação abaixo está errada. Investigando um
+> aparelho real, a causa da coluna faltante não era uma atualização marcada como
+> aplicada sem ter rodado — era o histórico do banco divergente, que fazia o app
+> abortar **todas** as atualizações, somado a uma repetição silenciosa que
+> escondia a falha. A cura automática desta versão trata um caso diferente e não
+> resolve esse. Veja [a 0.5.4](release-0.5.4.md).
+
 Correção de um defeito no banco local que quebrava a importação de extrato em
 alguns aparelhos.
 
