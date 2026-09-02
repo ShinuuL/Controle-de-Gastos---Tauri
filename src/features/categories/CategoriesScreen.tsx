@@ -234,16 +234,17 @@ function CategoryCard({
           >
             <Pencil className="size-4" aria-hidden />
           </button>
-          {!category.is_preset && (
-            <button
-              type="button"
-              onClick={onDelete}
-              className="flex size-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-background hover:text-destructive focus-visible:outline-2 focus-visible:outline-ring"
-              aria-label={`Excluir ${category.name}`}
-            >
-              <Trash2 className="size-4" aria-hidden />
-            </button>
-          )}
+          {/* Predefinida tambem sai: a lista e do usuario, nao nossa. O que
+              barra a exclusao e ter lancamento, e quem decide isso e o
+              repositorio. */}
+          <button
+            type="button"
+            onClick={onDelete}
+            className="flex size-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-background hover:text-destructive focus-visible:outline-2 focus-visible:outline-ring"
+            aria-label={`Excluir ${category.name}`}
+          >
+            <Trash2 className="size-4" aria-hidden />
+          </button>
         </div>
       </div>
       <p className="mt-3 text-sm font-medium">{progress.statusLabel}</p>

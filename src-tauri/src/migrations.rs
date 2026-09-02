@@ -129,6 +129,29 @@ pub fn migrations() -> Vec<Migration> {
         "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 6,
+            description: "add_app_meta",
+            sql: r#"
+            -- Fatos sobre esta instalacao que nao sao dado do usuario.
+            --
+            -- Existe por causa das categorias predefinidas. Ate agora a semeadura
+            -- perguntava "a tabela esta vazia?", e isso bastava porque ninguem
+            -- conseguia apagar uma predefinida. Agora que da, a pergunta passou a
+            -- ter a resposta errada no caso exato de quem apagou todas: no
+            -- proximo boot elas voltariam, e o app pareceria ignorar a decisao da
+            -- pessoa.
+            --
+            -- Uma marca explicita responde a pergunta certa -- "ja semeei alguma
+            -- vez?" -- que estado nenhum da tabela de categorias consegue
+            -- distinguir de uma instalacao nova.
+            CREATE TABLE IF NOT EXISTS app_meta (
+                chave TEXT PRIMARY KEY NOT NULL,
+                valor TEXT NOT NULL
+            );
+        "#,
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -139,7 +162,7 @@ mod tests {
     #[test]
     fn migrations_enforce_positive_expense_amounts_without_rebuilding_expenses() {
         let migrations = migrations();
-        assert_eq!(migrations.len(), 5);
+        assert_eq!(migrations.len(), 6);
 
         let initial = migrations
             .iter()

@@ -51,6 +51,7 @@ export default function TransactionForm({
   );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const semCategorias = categories.length === 0;
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -139,6 +140,7 @@ export default function TransactionForm({
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
           className={inputClass}
+          disabled={semCategorias}
         >
           {categories.map((category) => (
             <option key={category.id} value={category.id}>
@@ -146,6 +148,15 @@ export default function TransactionForm({
             </option>
           ))}
         </select>
+        {/* Lista vazia deixou de ser impossivel quando as predefinidas passaram
+            a poder ser excluidas. Sem este aviso o select fica em branco e o
+            salvar so reclama depois de a pessoa preencher o resto. */}
+        {semCategorias && (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Você não tem nenhuma categoria. Crie uma em <strong>Categorias</strong> antes
+            de lançar.
+          </p>
+        )}
       </div>
 
       <div>
@@ -218,7 +229,7 @@ export default function TransactionForm({
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={submitting}>
+        <Button type="submit" disabled={submitting || semCategorias}>
           {submitting ? "Salvando…" : submitLabel}
         </Button>
       </div>

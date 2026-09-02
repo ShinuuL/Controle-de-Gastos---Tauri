@@ -103,6 +103,7 @@ async fn efeito_presente(pool: &SqlitePool, versao: i64) -> Result<Option<bool>,
             tabela_existe(pool, "cloud_entitlement").await?
                 && tabela_existe(pool, "cloud_backup_state").await?,
         ),
+        6 => Some(tabela_existe(pool, "app_meta").await?),
         _ => None,
     })
 }
@@ -548,7 +549,7 @@ mod tests {
     #[tokio::test]
     async fn checksum_esperado_acompanha_o_sql_da_migracao() {
         let esperados = checksums_esperados();
-        assert_eq!(esperados.len(), 5);
+        assert_eq!(esperados.len(), 6);
         // SHA-384 tem 48 bytes; se o sqlx trocar de algoritmo, isto quebra e
         // avisa antes de o reparo carimbar checksum errado.
         for (_, checksum) in &esperados {
@@ -604,13 +605,14 @@ mod tests {
         assert_eq!(d.state, DatabaseState::Reparavel);
         assert!(d.divergentes.is_empty());
         assert!(d.ausentes.is_empty());
-        // v4 (coluna) e v5 (tabelas da nuvem) estao carimbadas sem efeito.
-        assert_eq!(d.sem_efeito, vec![4, 5]);
+        // v4 (coluna), v5 (tabelas da nuvem) e v6 (app_meta) estao carimbadas
+        // sem efeito.
+        assert_eq!(d.sem_efeito, vec![4, 5, 6]);
 
         let r = reparar(&pool, "backup.db".to_string())
             .await
             .expect("reparo");
-        assert_eq!(r.reaplicadas, vec![4, 5]);
+        assert_eq!(r.reaplicadas, vec![4, 5, 6]);
         assert!(tem_coluna(&pool, "expenses", "import_fingerprint")
             .await
             .expect("coluna"));
@@ -651,12 +653,12 @@ mod tests {
         }
 
         let d = diagnosticar(&pool).await.expect("diagnostico");
-        assert_eq!(d.sem_efeito, vec![3, 5]);
+        assert_eq!(d.sem_efeito, vec![3, 5, 6]);
 
         let r = reparar(&pool, "backup.db".to_string())
             .await
             .expect("reparo");
-        assert_eq!(r.reaplicadas, vec![3, 5]);
+        assert_eq!(r.reaplicadas, vec![3, 5, 6]);
         assert!(tem_coluna(&pool, "expenses", "status")
             .await
             .expect("status"));

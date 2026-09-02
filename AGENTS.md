@@ -26,7 +26,7 @@ Agentes não podem criar, editar ou excluir código, configuração, dependênci
 
 - Tauri 2 + React 19 + TypeScript strict + Tailwind CSS 4 (plugin `@tailwindcss/vite`) + SQLite via `@tauri-apps/plugin-sql`. Gerenciador de pacotes: npm.
 - Autoridade do esquema: migrações Rust em `src-tauri/src/migrations.rs` (registradas em `lib.rs`). O frontend nunca cria/altera tabelas — mudança de esquema = nova migração versionada.
-- Acesso ao banco somente via repositórios em `src/lib/repositories/` (`categories.ts`, `expenses.ts`, `transactions.ts`, `presets.ts`), usando `getDb()` de `src/lib/db.ts` (singleton lazy: `PRAGMA foreign_keys = ON` + seed das categorias predefinidas quando a tabela está vazia).
+- Acesso ao banco somente via repositórios em `src/lib/repositories/` (`categories.ts`, `expenses.ts`, `transactions.ts`, `presets.ts`), usando `getDb()` de `src/lib/db.ts` (singleton lazy: `PRAGMA foreign_keys = ON` + seed das categorias predefinidas, uma vez por banco).
 - Não existe tabela `transactions`: o tipo `Transaction` lê da tabela `expenses`, que tem colunas `nature` ('entrada'/'saida') e `status` ('previsto'/'realizado'). A tela de despesas (`ExpensesScreen`) é legado e filtra `nature = 'saida' AND status = 'realizado'`; o modelo de transações está em introdução (tipos, repositório e helpers existem, a UI ainda usa `ExpensesScreen`).
 - SQL parametrizado com placeholders `$1, $2, ...` (sintaxe do plugin-sql) — nunca `?` nem interpolação de strings.
 - Validação com mensagens de erro em pt-BR mora no repositório; o banco reforça `amount_cents` inteiro positivo via triggers da migração v2.
@@ -35,7 +35,7 @@ Agentes não podem criar, editar ou excluir código, configuração, dependênci
 
 ## Armadilhas
 
-- O teste Rust `migrations_enforce_positive_expense_amounts_without_rebuilding_expenses` (em `migrations.rs`) asserta `migrations().len() == 2` — adicionar migração exige atualizar o teste.
+- Adicionar migração exige atualizar três lugares além do `migrations.rs`: o `assert_eq!(migrations.len(), N)` em `migrations.rs`, o `assert_eq!(esperados.len(), N)` em `recovery.rs` e o `efeito_presente` em `recovery.rs` — este último é cobrado por teste, e esquecê-lo faria o reparo carimbar uma migração que nunca rodou.
 - Porta 1420 fixa (strictPort); HMR usa 1421 quando `TAURI_DEV_HOST` está definido. O Vite ignora `src-tauri` no watch.
 - Testes unitários mockam `../db` com `vi.mock` + fake DB (`select`/`execute`); novos testes ficam colocalizados (`*.test.ts`).
 - Capacidade Tauri em `src-tauri/capabilities/default.json`: `sql:default` + `sql:allow-execute` — novos plugins/comandos exigem permissão correspondente.
@@ -49,7 +49,8 @@ Agentes não podem criar, editar ou excluir código, configuração, dependênci
 - Datas são ISO `YYYY-MM-DD`, sem horário.
 - SQLite é local agora; uma futura nuvem deve usar comandos Rust tipados como autoridade do banco.
 - IDs usam UUID. Despesa exige valor positivo, categoria existente e data válida.
-- Categorias predefinidas são protegidas. Categoria personalizada com despesas não pode ser excluída.
+- Categorias predefinidas podem ser excluídas como qualquer outra (mudou em 2026-09-01): a lista é do usuário, e um palpite nosso que ele não pode recusar vira entulho. A única proteção é a que defende dado: categoria com lançamentos não pode ser excluída.
+- A semeadura das predefinidas (`presets.ts`) roda **uma vez por banco**, marcada em `app_meta` (migração v6). Não usar "a tabela está vazia" como sinal: quem apagou todas ficaria com elas de volta no boot seguinte.
 - Orçamento mensal de categoria é `null` ou centavos positivos. Não há parcelas ou recorrência.
 - O dashboard agrupa fatias de forma acessível e fornece alternativa acessível quando necessário.
 

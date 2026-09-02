@@ -153,6 +153,17 @@ export async function updateCategoryColor(
   });
 }
 
+/**
+ * Exclui a categoria, predefinida ou não.
+ *
+ * As predefinidas eram protegidas por serem um palpite nosso sobre o que a
+ * pessoa gasta -- e palpite que não se pode recusar vira entulho na lista de
+ * todo dia. A única proteção que sobra é a que defende dado do usuário:
+ * categoria com lançamento não sai, senão os lançamentos iriam junto.
+ *
+ * Apagar todas é permitido e **não volta atrás**: a semeadura em `presets.ts`
+ * roda uma vez por banco, marcada em `app_meta`.
+ */
 export async function deleteCategory(id: string): Promise<void> {
   return traceOperation("category.delete", async () => {
     const categoryId = id.trim();
@@ -163,9 +174,6 @@ export async function deleteCategory(id: string): Promise<void> {
       [categoryId],
     );
     if (!categories[0]) throw new Error("Categoria não encontrada.");
-    if (categories[0]?.is_preset === 1) {
-      throw new Error("Categorias padrão não podem ser excluídas.");
-    }
     const rows = await db.select<{ n: number }[]>(
       "SELECT COUNT(*) AS n FROM expenses WHERE category_id = $1",
       [categoryId],

@@ -214,29 +214,45 @@ describe("category repository", () => {
     expect(fake.executeCalls).toHaveLength(0);
   });
 
-  it("rejects preset deletion before checking its expenses", async () => {
+  const presetMoradia = {
+    id: "preset",
+    name: "Moradia",
+    icon: "House",
+    color: "#123456",
+    is_preset: 1,
+    budget_monthly: null,
+    sort_order: 0,
+    created_at: "2026-01-01T00:00:00.000Z",
+  };
+
+  // A lista de categorias e do usuario: um palpite nosso que ele nao pode
+  // recusar vira entulho na tela de todo dia.
+  it("deletes a preset category that has no transactions", async () => {
     const fake = createFakeDb({
-      categories: [
-        {
-          id: "preset",
-          name: "Moradia",
-          icon: "House",
-          color: "#123456",
-          is_preset: 1,
-          budget_monthly: null,
-          sort_order: 0,
-          created_at: "2026-01-01T00:00:00.000Z",
-        },
-      ],
+      categories: [presetMoradia],
+      expenseCategoryIds: [],
+    });
+    getDb.mockResolvedValue(fake.db);
+
+    await expect(deleteCategory(" preset ")).resolves.toBeUndefined();
+
+    expect(fake.executeCalls).toHaveLength(1);
+    expect(fake.executeCalls[0]?.query).toContain("DELETE FROM categories");
+  });
+
+  // A protecao que sobra defende dado do usuario, nao a nossa lista: os
+  // lancamentos iriam junto com a categoria.
+  it("still refuses a preset category that has transactions", async () => {
+    const fake = createFakeDb({
+      categories: [presetMoradia],
       expenseCategoryIds: ["preset"],
     });
     getDb.mockResolvedValue(fake.db);
 
     await expect(deleteCategory(" preset ")).rejects.toThrow(
-      "Categorias padrão não podem ser excluídas.",
+      "Categoria possui gastos e não pode ser excluída.",
     );
 
-    expect(fake.selectCalls).toHaveLength(1);
     expect(fake.executeCalls).toHaveLength(0);
   });
 
