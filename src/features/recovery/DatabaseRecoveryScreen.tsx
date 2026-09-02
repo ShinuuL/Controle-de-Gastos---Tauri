@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AlertTriangle, LifeBuoy } from "lucide-react";
 import type { DbFailure } from "../../lib/dbFailure";
-import { isRepairable } from "../../lib/dbFailure";
+import {
+  deveOferecerReparo,
+  explicacaoDoEstado,
+  linhasDoDiagnostico,
+  type Diagnostico,
+} from "./diagnostico";
 
 interface RepairOutcome {
   backup: string;
@@ -17,9 +22,31 @@ type Estado =
   | { kind: "reparado"; outcome: RepairOutcome }
   | { kind: "falhou"; message: string };
 
+function rotuloDeVersoes(versoes: number[]): string {
+  return versoes.map((v) => `v${v}`).join(", ");
+}
+
 export default function DatabaseRecoveryScreen({ falha }: { falha: DbFailure }) {
   const [estado, setEstado] = useState<Estado>({ kind: "inicial" });
-  const reparavel = isRepairable(falha);
+  const [diagnostico, setDiagnostico] = useState<Diagnostico | null>(null);
+
+  // O diagnóstico olha o schema e o histórico; a mensagem de erro é palpite.
+  // Enquanto ele não chega, a tela usa a classificação da mensagem.
+  useEffect(() => {
+    let cancelado = false;
+    invoke<Diagnostico>("diagnose_database")
+      .then((d) => {
+        if (!cancelado) setDiagnostico(d);
+      })
+      .catch(() => {
+        // Diagnóstico que não roda não pode piorar uma tela de erro.
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  const reparavel = deveOferecerReparo(falha, diagnostico);
 
   async function reparar() {
     setEstado({ kind: "reparando" });
@@ -67,6 +94,19 @@ export default function DatabaseRecoveryScreen({ falha }: { falha: DbFailure }) 
           className="rounded-lg border border-accent/40 bg-accent/10 p-4 text-sm"
         >
           <p className="font-medium">Reparo concluído.</p>
+          {/* O que foi feito, e não só "pronto": é o único registro que a
+              pessoa tem do que mudou no banco dela. */}
+          <ul className="mt-1 list-disc pl-5 text-muted-foreground">
+            {estado.outcome.corrigidas.length > 0 && (
+              <li>Registro acertado: {rotuloDeVersoes(estado.outcome.corrigidas)}.</li>
+            )}
+            {estado.outcome.carimbadas.length > 0 && (
+              <li>Registradas como já aplicadas: {rotuloDeVersoes(estado.outcome.carimbadas)}.</li>
+            )}
+            {estado.outcome.reaplicadas.length > 0 && (
+              <li>Aplicadas agora: {rotuloDeVersoes(estado.outcome.reaplicadas)}.</li>
+            )}
+          </ul>
           <p className="mt-1 text-muted-foreground">
             Cópia de segurança em <code className="break-all">{estado.outcome.backup}</code>.
           </p>
@@ -100,6 +140,24 @@ export default function DatabaseRecoveryScreen({ falha }: { falha: DbFailure }) 
           {estado.kind === "reparando" ? "Reparando…" : "Reparar meus dados"}
         </button>
       ) : null}
+
+      {/* Aberto, e não dentro do `details`: foi exatamente a informação
+          escondida que fez um problema reparável parecer sem saída. */}
+      {diagnostico && (
+        <div className="rounded-lg border border-border bg-surface p-4 text-sm">
+          <p className="font-medium text-foreground">O que o banco diz</p>
+          <p className="mt-1 text-muted-foreground">
+            {explicacaoDoEstado(diagnostico.state)}
+          </p>
+          {linhasDoDiagnostico(diagnostico).length > 0 && (
+            <ul className="mt-2 list-disc pl-5 text-muted-foreground">
+              {linhasDoDiagnostico(diagnostico).map((linha) => (
+                <li key={linha}>{linha}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <details className="text-xs text-muted-foreground">
         <summary className="cursor-pointer">Detalhes técnicos</summary>
